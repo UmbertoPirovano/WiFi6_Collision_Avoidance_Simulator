@@ -1,6 +1,4 @@
-yolov8m-cls.pt
-yolov8m.pt
-yolov8n.pt
-yolov8s.pt
+*:Zone.Identifier
+*.pt
 images/
 results*/
