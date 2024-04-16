@@ -5,9 +5,9 @@ import os
 model = YOLO('yolov8m-cls.pt')  # load an official model
 
 # Predict with the model
-results = model('/home/bert/github/5G_CARS_1/images/')  # predict on an image folder
+results = model('Computer_vision/images')  # predict on an image folder
 
-results_folder = 'results'
+results_folder = 'Computer_vision/results'
 os.makedirs(results_folder, exist_ok=True)
 
 # Iterate through the results and save them in the 'results' folder
