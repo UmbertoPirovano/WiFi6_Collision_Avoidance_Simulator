@@ -1,4 +1,6 @@
 *:Zone.Identifier
 *.pt
+*.png
+*.jpg
 images/
 results*/

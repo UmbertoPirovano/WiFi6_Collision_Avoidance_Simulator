@@ -2,7 +2,7 @@ from ultralytics import YOLO
 import os
 
 # Load a model
-model = YOLO('yolov8m-cls.pt')  # load an official model
+model = YOLO('yolov8m.pt')  # load an official model
 
 # Predict with the model
 results = model('Computer_vision/images')  # predict on an image folder
