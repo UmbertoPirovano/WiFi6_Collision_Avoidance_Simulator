@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class RoI:
-    def __init__(self, mask_path, img_path=None):
+    def __init__(self, mask_path, img_path=None, ratios=(15,25,60)):
         self.img = None
         self.img_mask = None
         self.height = None
@@ -21,11 +21,43 @@ class RoI:
 
         # Define lines
         self.lines = [
-            (0, self.height, self.width, self.height),
             (0, self.height, int(self.width/2-self.width/32), int(self.height/2)),
             (self.width, self.height, int(self.width/2 + self.width/32), int(self.height/2)),
+            (0, self.height, self.width, self.height),
             (int(self.width/2 + self.width/32), int(self.height/2), int(self.width/2 - self.width/32), int(self.height/2))
         ]
+
+        # Define the lines based on the height ratio
+        for i in range(len(ratios)-1):
+            ratio = sum(ratios[:i+1])    
+            y = self.height/2 * (1 + ratio / 100)
+            x1 = (y-self.height)/(-self.height/self.width*16/15)
+            x2 = ((y-self.height/2)/(self.height/2))*(15/32*self.width)+(17/32*self.width)
+            self.lines.append((int(x1), int(y), int(x2), int(y)))
+
+        self.lines = sorted(self.lines, key=lambda x: (x[1], x[3]), reverse=True)
+
+        # Create masks for the trapezoids (sub-areas of the ROI)
+        self.masks = []
+        for i in range(len(self.lines)):
+            x1, y1, x2, y2 = self.lines[i]
+            if y1 != y2:
+                continue
+            pts = np.array([[x1, y1], [x2, y2]], np.int32)
+            # Find the next horizontal line
+            k = i + 1
+            while len(pts) < 4 and k < len(self.lines):
+                x3, y3, x4, y4 = self.lines[k]
+                if y3 == y4:
+                    pts = np.concatenate((pts, [[x3, y3], [x4, y4]]), axis=0)
+                k += 1
+            # If the number of points is not 4, skip
+            if len(pts) != 4:
+                continue
+            # Create a mask for the trapezoid
+            mask = np.zeros_like(self.img_mask[:, :])
+            cv2.fillPoly(mask, [pts], (255))
+            self.masks.append(mask)                
 
         # Create a mask for the trapezoid
         self.mask = np.zeros_like(self.img_mask[:, :])
@@ -34,7 +66,6 @@ class RoI:
                         [int(self.width/2 + self.width/32), int(self.height/2)], 
                         [self.width, self.height]], np.int32)
         cv2.fillPoly(self.mask, [pts], (255))
-
         # Create the inverse mask
         self.mask_inv = cv2.bitwise_not(self.mask)
 
@@ -60,12 +91,12 @@ class RoI:
             plt.show()
         return img
 
-    def get_pixels_in_roi(self):        
-        # Convert the mask to a boolean array
-        mask_bool = self.mask == 255
-        # Extract the pixels within the region of interest
-        pixels_in_roi = self.img_mask[mask_bool]
-
+    def get_pixels_in_roi(self):
+        pixels_in_roi = []
+        for mask in self.masks:
+            mask_bool = mask == 255
+            pxs = self.img_mask[mask_bool]
+            pixels_in_roi.append(pxs)
         return pixels_in_roi
     
     def detect_in_roi(self):
@@ -73,16 +104,22 @@ class RoI:
                     6: 'traffic light', 7: 'traffic sign', 11: 'person', 12: 'rider',
                     13: 'car', 14: 'truck', 15: 'bus', 16: 'train', 17: 'motorcycle',
                     18: 'bicycle', -1: 'license plate'}
-        counter = blacklist.fromkeys(blacklist, 0)
         roi = self.get_pixels_in_roi()
-        for i in roi:
-            if i in blacklist.keys():
-                counter[i] += 1
-        # Remove the keys with a value of 0
-        counter = {key: value for key, value in counter.items() if value != 0}
-        for key, value in counter.items():
-            print(f'{blacklist[key]}: {value}') if value != 0 else None
-        return counter
+        general_count = []
+        for subarea in roi:
+            counter = blacklist.fromkeys(blacklist, 0)
+            for i in subarea:
+                if i in blacklist.keys():
+                    counter[i] += 1
+            # Remove the keys with a value of 0
+            counter = {key: value for key, value in counter.items() if value != 0}
+            general_count.append(counter)
+        for i in range(len(general_count)):
+            counter = general_count[i]
+            print(f'Subarea {i+1}:')
+            for key, value in counter.items():
+                print(f'    {blacklist[key]}: {value}') if value != 0 else None
+        return general_count
 
 
 
