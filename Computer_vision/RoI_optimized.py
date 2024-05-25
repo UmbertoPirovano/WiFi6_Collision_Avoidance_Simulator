@@ -16,7 +16,6 @@ class RoI:
         self.steering = steering
         
         self.lines = self._calculate_lines()
-        print(self.lines)
         self.masks = self._create_trapezoid_masks()
 
         self.mask = self._create_main_roi_mask()
@@ -132,20 +131,3 @@ class RoI:
                 print(f'    {blacklist[key]}: {value}')
 
         return general_count
-
-# Load the image and mask
-img_path = '/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/vis/image_8.png'
-mask_path = '/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/pred/00000007_pred.png'
-start_time = time.time()
-roi = RoI(mask_path, img_path, steering=0)
-roi.detect_in_roi()
-print(f'Execution time: {time.time() - start_time:.2f} seconds')
-roi.draw_roi()
-
-roi = RoI(mask_path, img_path, steering=-1)
-roi.detect_in_roi()
-roi.draw_roi()
-
-roi = RoI(mask_path, img_path, steering=1)
-roi.detect_in_roi()
-roi.draw_roi()
