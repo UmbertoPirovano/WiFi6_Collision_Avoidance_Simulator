@@ -1,4 +1,5 @@
 *:Zone.Identifier
+*.pyc
 *.pt
 *.pth
 *.png
