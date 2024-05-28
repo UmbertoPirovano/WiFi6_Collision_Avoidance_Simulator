@@ -131,3 +131,13 @@ class RoI:
                 print(f'    {blacklist[key]}: {value}')
 
         return general_count
+    
+if __name__ == "__main__":
+    mask_path = "/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/pred/00000007_pred.png"
+    img_path = "/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/vis/image_8.png"
+    ratios = (10, 10, 80)
+    steering = 0
+
+    roi = RoI(mask_path, img_path, ratios, steering)
+    roi.draw_roi()
+    roi.detect_in_roi()
