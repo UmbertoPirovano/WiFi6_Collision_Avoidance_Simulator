@@ -51,14 +51,15 @@ try:
     # let car drive a bit
 
     with contextlib.redirect_stdout(io.StringIO()):
-        edge_service = CVEdgeService()
+        edge_service = CVEdgeService(mode=3)
 
     time.sleep(3)
     chronos_capture = []
     chronos_tx = []
     chronos_inference = []
     chronos_actuation = []
-    while True:
+    flag = True
+    while flag:
         start_time = time.time()
         output_dir = '/home/bert/github/5G_CARS_1/run/received/'
         img_path = capture_image(output_dir)
@@ -77,15 +78,19 @@ try:
         # Get the path to the last png added to out_dir
         start_time = time.time()
         mask_files = sorted(os.listdir(os.path.join(out_dir, 'pred')))
+        view_files = sorted(os.listdir(os.path.join(out_dir, 'vis')))
         mask_path = os.path.join(out_dir, 'pred', mask_files[-1])
+        vis_path = os.path.join(out_dir, 'vis', view_files[-1])
         print(f"Mask path: {mask_path}")
-        roi = RoI(mask_path, img_path, ratios=[100], steering=0)
+        roi = RoI(mask_path, vis_path, ratios=[100], steering=0)
         detected = roi.detect_in_roi()
         emergency_stop_triggered = False
         for i, counter in enumerate(detected):
-            if any(value > 1500 for value in counter.values()):
+            if any(value > 2000 for value in counter.values()):
                 print(f'Emergency stop! Obstacle detected in subarea {i + 1}!')
                 car_break()
+                roi.draw_roi()
+                flag = False
                 break
         chronos_actuation.append(time.time() - start_time)
 finally:
