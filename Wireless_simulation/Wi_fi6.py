@@ -13,30 +13,30 @@ class Channel_802_11:
         self.modulation_order = decimal.Decimal('1024')  # Modulation order for 1024-QAM
         self.n = decimal.Decimal(math.log2(1024))  # Bits per symbol for 1024-QAM
     
-    def calculate_fspl(self, distance):
+    def __calculate_fspl(self, distance):
         distance = decimal.Decimal(str(distance))
         fspl = 20 * distance.log10() + 20 * self.frequency.log10() + decimal.Decimal('32.4')
         return fspl
 
-    def calculate_snr(self, fspl):
+    def __calculate_snr(self, fspl):
         std = random.uniform(1,4)
         X_s = decimal.Decimal(str(np.random.normal(0, std)))  # shadowing component
         snr = self.P_tx - self.P_n - fspl - (X_s *random.randint(0,2))
         return snr
     
-    def calculate_channel_capacity(self, snr_linear):
+    def __calculate_channel_capacity(self, snr_linear):
         C = self.available_bandwidth * (1 + snr_linear).log10() / decimal.Decimal(math.log10(2))
         return C
 
-    def calculate_bitrate(self, C):
+    def __calculate_bitrate(self, C):
         Rb = C * decimal.Decimal('5') / decimal.Decimal('6') * decimal.Decimal(str(random.uniform(0.8, 1)))
         return Rb
     
-    def compute_Bandwidth_usage(self, C, Rb):
+    def __compute_Bandwidth_usage(self, C, Rb):
         Bandwidth_usage = Rb / C * decimal.Decimal('100')
         return Bandwidth_usage
     
-    def compute_tx(self, Image_size, Rb):
+    def __compute_tx(self, Image_size, Rb):
         decimal.getcontext().prec = 50
         Image_size = decimal.Decimal(str(Image_size))
         Rb = decimal.Decimal(str(Rb))
@@ -44,13 +44,13 @@ class Channel_802_11:
         return latency
     
     def perform_calculations(self, Image_size, distance):
-        fspl = self.calculate_fspl(distance)
-        snr_db = self.calculate_snr(fspl)
+        fspl = self.__calculate_fspl(distance)
+        snr_db = self.__calculate_snr(fspl)
         snr_linear = 10 ** (snr_db / decimal.Decimal('10'))
-        capacity = self.calculate_channel_capacity(snr_linear)
-        bitrate = self.calculate_bitrate(capacity)
-        usage = self.compute_Bandwidth_usage(capacity, bitrate)
-        tx_time = self.compute_tx(Image_size, bitrate)
+        capacity = self.__calculate_channel_capacity(snr_linear)
+        bitrate = self.__calculate_bitrate(capacity)
+        usage = self.__compute_Bandwidth_usage(capacity, bitrate)
+        tx_time = self.__compute_tx(Image_size, bitrate)
 
         return {
             "P_tx": self.P_tx,
@@ -63,5 +63,25 @@ class Channel_802_11:
             "Bandwidth_usage": usage,
             "tx_time": tx_time    
         }
+    
+if __name__ == "__main__":
+    random.seed()  # Set seed for reproducibility
+    available_bandwidth = 80e6  # 80 MHz
+    frequency = 5  # 5 GHz
+    distance = 18  # Distance in meters
+
+    file_path = "/home/bert/github/5G_CARS_1/Airsim/images/image_3.png"
+    import os
+    file_size = os.path.getsize(file_path)  # File size in MB
+    calculator = Channel_802_11(available_bandwidth, frequency, P_tx=-15)
+    results = calculator.perform_calculations(file_size, distance)
+
+    print(f"Transmitted Power: {results['P_tx']:.2f} m/s")  # Speed is used as transmitted power
+    print(f"Free Space Path Loss (FSPL): {results['FSPL']:.2f} dB")
+    print(f"SNR (linear): {results['SNR_linear']:.2f}")
+    print(f"Channel Capacity: {results['Channel_Capacity_Mbps']:.2f} Mbps")
+    print(f"Bitrate: {results['Bitrate_Mbps']:.2f} Mbps")
+    print(f"Bandwidth usage: {results['Bandwidth_usage']:.2f}")
+    print(f"Transmission time: {results['tx_time']:.6f} s")
 
 
