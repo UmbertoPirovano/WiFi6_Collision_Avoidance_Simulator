@@ -1,27 +1,28 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 
 class RoI:
-    def __init__(self, mask_path, img_path=None, ratios=(10,10,80), steering=0):
+    def __init__(self, img_size=(576,1024), ratios=[100]):
+        self.height, self.width = img_size[0], img_size[1]
+        self.ratios = ratios
+
+    def __compute_RoI(self, mask_path, img_path=None, steering=0):
         self.img = cv2.imread(img_path) if img_path else None
         self.img_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
 
         if self.img_mask is None:
             raise ValueError("Error: Mask image not loaded correctly.")
 
-        self.height, self.width = self.img_mask.shape
-        self.ratios = ratios
         self.steering = steering
         
-        self.lines = self._calculate_lines()
-        self.masks = self._create_trapezoid_masks()
+        self.lines = self.__calculate_lines()
+        self.masks = self.__create_trapezoid_masks()
 
-        self.mask = self._create_main_roi_mask()
+        self.mask = self.__create_main_roi_mask()
         self.mask_inv = cv2.bitwise_not(self.mask)
 
-    def _calculate_lines(self):
+    def __calculate_lines(self):
         # shift is the horizontal shift of the trapezoid, to the left if steering is -1, to the right if steering is 1
         shift = self.width / 4 * self.steering
         if self.steering != 0:
@@ -49,7 +50,7 @@ class RoI:
         # Sort the lines based on the y-coordinate
         return sorted(lines, key=lambda x: (x[1], x[3]), reverse=True)
 
-    def _create_trapezoid_masks(self):
+    def __create_trapezoid_masks(self):
         masks = []
         for i in range(len(self.lines)):
             x1, y1, x2, y2 = self.lines[i]
@@ -76,12 +77,19 @@ class RoI:
             masks.append(mask)
         return masks
 
-    def _create_main_roi_mask(self):
+    def __create_main_roi_mask(self):
         mask = np.zeros_like(self.img_mask)
         for m in self.masks:
             mask = cv2.bitwise_or(mask, m)
         return mask
 
+    def __get_pixels_in_roi(self):
+        pixels_in_roi = []
+        for mask in self.masks:
+            pixels = self.img_mask[mask == 255]
+            pixels_in_roi.append(pixels)
+        return pixels_in_roi
+    
     def draw_roi(self, display=True):
         if self.img is None:
             raise ValueError("Error: Demo image not loaded.")
@@ -99,22 +107,17 @@ class RoI:
             plt.axis('off')
             plt.show()
         return img
-
-    def get_pixels_in_roi(self):
-        pixels_in_roi = []
-        for mask in self.masks:
-            pixels = self.img_mask[mask == 255]
-            pixels_in_roi.append(pixels)
-        return pixels_in_roi
     
-    def detect_in_roi(self):
+    def detect_in_roi(self, mask_path, img_path=None, steering=0):
         blacklist = {
             2: 'building', 3: 'wall', 4: 'fence', 5: 'pole',
             6: 'traffic light', 7: 'traffic sign', 11: 'person', 12: 'rider',
             13: 'car', 14: 'truck', 15: 'bus', 16: 'train', 17: 'motorcycle',
             18: 'bicycle', -1: 'license plate'
         }
-        roi = self.get_pixels_in_roi()
+
+        self.__compute_RoI(mask_path, img_path, steering)
+        roi = self.__get_pixels_in_roi()
         general_count = []
 
         for subarea in roi:
@@ -135,9 +138,13 @@ class RoI:
 if __name__ == "__main__":
     mask_path = "/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/pred/00000007_pred.png"
     img_path = "/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/vis/image_8.png"
-    ratios = (10, 10, 80)
-    steering = 0
 
-    roi = RoI(mask_path, img_path, ratios, steering)
+    roi = RoI(img_size=(576,1024), ratios=[100])
+    roi.detect_in_roi(mask_path, img_path, steering=0)
     roi.draw_roi()
-    roi.detect_in_roi()
+
+    roi.detect_in_roi(mask_path, img_path, steering=-1)
+    roi.draw_roi()
+
+    roi.detect_in_roi(mask_path, img_path, steering=1)
+    roi.draw_roi()
