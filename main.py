@@ -7,102 +7,143 @@ import cv2
 import numpy as np
 from PIL import Image
 import os
-from Computer_vision.RoI_optimized import RoI
-from Computer_vision.cvEdgeService import CVEdgeService
 import shutil
 
-def capture_image(output_dir, save=True): 
-        response = client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)]) 
-        img = np.frombuffer(response[0].image_data_uint8, dtype=np.uint8) 
-        img = img.reshape(response[0].height, response[0].width, 3)        
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(img) 
+from Computer_vision.RoI_optimized import RoI
+from Computer_vision.cvEdgeService import CVEdgeService
+from Wireless_simulation.Wi_fi6 import Channel_802_11 
 
-        # Save the image with a unique filename based on timestamp
-        os.makedirs(output_dir, exist_ok=True)
+class AirSimCarSimulation:
+    def __init__(self, client_ip, output_dir, processed_dir, roi_ratio=[100], cv_mode=3, channel_params=[20e6, 5, -15]):
+        self.client = airsim.CarClient(ip=client_ip)
+        self.client.confirmConnection()
+        self.client.enableApiControl(True)
+        self.car_controls = airsim.CarControls()
+        self.output_dir = output_dir
+        self.processed_dir = processed_dir
+
+        # Initialize other components
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.edge_service = CVEdgeService(mode=cv_mode)
+        self.roi = RoI(ratios=roi_ratio)
+        self.channel_calculator = Channel_802_11(available_bandwidth=channel_params[0], frequency=channel_params[1], P_tx=channel_params[2])
+
+        # Timing records
+        self.chronos_capture = []
+        self.chronos_tx = []
+        self.chronos_inference = []
+        self.chronos_actuation = []
+
+    def __capture_image(self, save=True):
+        response = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)])
+        img = np.frombuffer(response[0].image_data_uint8, dtype=np.uint8)
+        img = img.reshape(response[0].height, response[0].width, 3)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(img)
+
+        os.makedirs(self.output_dir, exist_ok=True)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(output_dir, f'image_{timestamp}.png')
+        output_file = os.path.join(self.output_dir, f'image_{timestamp}.png')
         if save:
             img.save(output_file)
         print(f"Image saved to {output_file}")
         return output_file
 
-def car_break():
-    car_controls.throttle = 0
-    car_controls.brake = 1
-    client.setCarControls(car_controls)
-    #time.sleep(3)
-    #car_controls.brake = 0
-    #client.setCarControls(car_controls)
+    def __car_break(self):
+        self.car_controls.throttle = 0
+        self.car_controls.brake = 1
+        self.client.setCarControls(self.car_controls)
 
-try:
-    client = airsim.CarClient(ip="192.168.1.174")    # connect to the AirSim simulator, leave the IP blank to connect to the local machine or set it to the IP of the remote machine
-    client.confirmConnection()
-    client.enableApiControl(True)
-    car_controls = airsim.CarControls()
-    
-    # get state of the car
-    car_state = client.getCarState()
-    print("Speed %d, Gear %d" % (car_state.speed, car_state.gear))
-    # set the controls for car
-    car_controls.throttle = 0.5
-    car_controls.steering = 0
-    client.setCarControls(car_controls)
-    # let car drive a bit
+    def __compute_distance(self, car_state, bts_position=(0, 0, 0)):
+        car_position = car_state.kinematics_estimated.position
+        distance = np.sqrt(
+            (car_position.x_val - bts_position[0]) ** 2 + 
+            (car_position.y_val - bts_position[1]) ** 2 + 
+            (car_position.z_val - bts_position[2]) ** 2
+        )
+        return distance
 
-    with contextlib.redirect_stdout(io.StringIO()):
-        edge_service = CVEdgeService(mode=3)
+    def __cleanup(self):
+        print("Simulation terminated. Resetting AirSim.")
+        shutil.rmtree(self.output_dir)
+        shutil.rmtree(self.processed_dir)
+        self.client.reset()
+        self.client.enableApiControl(False)
+        self.client.armDisarm(False)
+        self.__print_timings()
 
-    time.sleep(3)
-    chronos_capture = []
-    chronos_tx = []
-    chronos_inference = []
-    chronos_actuation = []
-    flag = True
-    while flag:
-        start_time = time.time()
-        output_dir = '/home/bert/github/5G_CARS_1/run/received/'
-        img_path = capture_image(output_dir)
-        chronos_capture.append(time.time() - start_time)
+    def __print_timings(self):
+        print("Average time for capture: ", sum(self.chronos_capture) / len(self.chronos_capture))
+        print("Average time for tx: ", sum(self.chronos_tx) / len(self.chronos_tx))
+        print("Average time for inference: ", sum(self.chronos_inference) / len(self.chronos_inference))
+        #print("Average time for actuation: ", sum(self.chronos_actuation) / len(self.chronos_actuation))
+        total_average_time = (
+            sum(self.chronos_capture) + sum(self.chronos_tx) + 
+            sum(self.chronos_inference) #+ sum(self.chronos_actuation)
+        ) / len(self.chronos_capture)
+        print("Total average time: ", total_average_time)
 
-        start_time = time.time()
-        tx_time = 0.010
-        time.sleep(tx_time)
-        chronos_tx.append(time.time() - start_time)
-
-        out_dir = '/home/bert/github/5G_CARS_1/run/processed/'
-        start_time = time.time()
-        edge_service.perform_inference(img_path, out_dir)
-        chronos_inference.append(time.time() - start_time)
-
-        # Get the path to the last png added to out_dir
-        start_time = time.time()
-        mask_files = sorted(os.listdir(os.path.join(out_dir, 'pred')))
-        view_files = sorted(os.listdir(os.path.join(out_dir, 'vis')))
-        mask_path = os.path.join(out_dir, 'pred', mask_files[-1])
-        vis_path = os.path.join(out_dir, 'vis', view_files[-1])
-        print(f"Mask path: {mask_path}")
-        roi = RoI(mask_path, vis_path, ratios=[100], steering=0)
-        detected = roi.detect_in_roi()
-        emergency_stop_triggered = False
+    def __perform_decision(self, detected):
+        total = {key: 0 for key in detected[0]}
         for i, counter in enumerate(detected):
-            if any(value > 2000 for value in counter.values()):
-                print(f'Emergency stop! Obstacle detected in subarea {i + 1}!')
-                car_break()
-                roi.draw_roi()
-                flag = False
-                break
-        chronos_actuation.append(time.time() - start_time)
-finally:
-    print(f"Simulation terminated. Resetting airsim.")
-    # Empty the 'run' folder
-    shutil.rmtree('/home/bert/github/5G_CARS_1/run')
-    os.makedirs('/home/bert/github/5G_CARS_1/run')
-    client.reset()
-    client.enableApiControl(False)
-    client.armDisarm(False)
-    print("Average time for capture: ", sum(chronos_capture) / len(chronos_capture))
-    print("Average time for tx: ", sum(chronos_tx) / len(chronos_tx))
-    print("Average time for inference: ", sum(chronos_inference) / len(chronos_inference))
-    print("Average time for actuation: ", sum(chronos_actuation) / len(chronos_actuation))
-    print("Total average time: ", (sum(chronos_capture) + sum(chronos_tx) + sum(chronos_inference) + sum(chronos_actuation)) / len(chronos_capture))
+            for key, value in counter.items():
+                total[key] = total.get(key, 0) + value * (i + 1)
+                if total[key] > 6000:
+                    print(f'Emergency stop! Obstacle detected in subarea {i + 1}!')
+                    self.__car_break()
+                    self.roi.draw_roi()
+                    raise Exception("Emergency stop triggered!")
+
+    def run_simulation(self):
+        try:
+            # Get initial state of the car
+            car_state = self.client.getCarState()
+            print("Speed %d, Gear %d" % (car_state.speed, car_state.gear))
+
+            # Set initial controls for the car
+            self.car_controls.throttle = 0.5
+            self.car_controls.steering = 0
+            self.client.setCarControls(self.car_controls)
+
+            # Let the car drive a bit
+            time.sleep(2)
+
+            while True:
+                start_time = time.time()
+                img_path = self.__capture_image()
+                self.chronos_capture.append(time.time() - start_time)
+
+                start_time = time.time()
+                tx_time = self.channel_calculator.perform_calculations(
+                    Image_size=os.path.getsize(img_path),
+                    distance=self.__compute_distance(self.client.getCarState())
+                )["tx_time"]
+                time.sleep(float(tx_time))
+                self.chronos_tx.append(time.time() - start_time)
+
+                start_time = time.time()
+                self.edge_service.perform_inference(img_path, self.processed_dir)
+                self.chronos_inference.append(time.time() - start_time)
+
+                # Get the path to the last png added to processed_dir
+                mask_files = sorted(os.listdir(os.path.join(self.processed_dir, 'pred')))
+                view_files = sorted(os.listdir(os.path.join(self.processed_dir, 'vis')))
+                mask_path = os.path.join(self.processed_dir, 'pred', mask_files[-1])
+                vis_path = os.path.join(self.processed_dir, 'vis', view_files[-1])
+                print(f"Mask path: {mask_path}")
+
+                detected = self.roi.detect_in_roi(mask_path, vis_path, steering=0)
+                self.__perform_decision(detected)
+        finally:
+            self.__cleanup()
+
+if __name__ == "__main__":
+    simulation = AirSimCarSimulation(
+        client_ip="192.168.1.227",
+        output_dir='/home/bert/github/5G_CARS_1/run/received/',
+        processed_dir='/home/bert/github/5G_CARS_1/run/processed/',
+        roi_ratio=[34,33,33],
+        cv_mode=3,
+        channel_params=[20e6, 5, -15]
+    )
+    simulation.run_simulation()
