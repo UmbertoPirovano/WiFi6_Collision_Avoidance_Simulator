@@ -49,11 +49,6 @@ class AirSimCarSimulation:
         print(f"Image saved to {output_file}")
         return output_file
 
-    def __car_break(self):
-        self.car_controls.throttle = 0
-        self.car_controls.brake = 1
-        self.client.setCarControls(self.car_controls)
-
     def __compute_distance(self, car_state, bts_position=(0, 0, 0)):
         car_position = car_state.kinematics_estimated.position
         distance = np.sqrt(
@@ -83,16 +78,27 @@ class AirSimCarSimulation:
         ) / len(self.chronos_capture)
         print("Total average time: ", total_average_time)
 
+    def __car_break(self):
+        self.car_controls.throttle = 0
+        self.car_controls.brake = 1
+        self.client.setCarControls(self.car_controls)
+
     def __perform_decision(self, detected):
-        total = {key: 0 for key in detected[0]}
+        threshold = 1200
         for i, counter in enumerate(detected):
-            for key, value in counter.items():
-                total[key] = total.get(key, 0) + value * (i + 1)
-                if total[key] > 6000:
-                    print(f'Emergency stop! Obstacle detected in subarea {i + 1}!')
-                    self.__car_break()
-                    self.roi.draw_roi()
-                    raise Exception("Emergency stop triggered!")
+            if counter:
+                max_key = max(counter, key=lambda k: counter[k])
+                coefficient = [6,6,4,1]
+                pixel_number = counter[max_key] * coefficient[i]
+                if pixel_number > threshold:
+                    new_throttle = self.car_controls.throttle - (pixel_number/(1000) * self.car_controls.throttle*2)
+                    if new_throttle < 0:
+                        new_throttle = 0
+                    self.car_controls.throttle = new_throttle
+                    self.client.setCarControls(self.car_controls)
+                    print(f"Detected {pixel_number} in subarea {i + 1}! Throttle reduced to {new_throttle}")
+            
+        
 
     def run_simulation(self):
         try:
@@ -113,9 +119,10 @@ class AirSimCarSimulation:
                 img_path = self.__capture_image()
                 self.chronos_capture.append(time.time() - start_time)
 
+                # Transmission img -> edge
                 start_time = time.time()
                 tx_time = self.channel_calculator.perform_calculations(
-                    Image_size=os.path.getsize(img_path),
+                    file_size=os.path.getsize(img_path),
                     distance=self.__compute_distance(self.client.getCarState())
                 )["tx_time"]
                 time.sleep(float(tx_time))
@@ -139,10 +146,10 @@ class AirSimCarSimulation:
 
 if __name__ == "__main__":
     simulation = AirSimCarSimulation(
-        client_ip="192.168.1.227",
+        client_ip="172.21.151.58",
         output_dir='/home/bert/github/5G_CARS_1/run/received/',
         processed_dir='/home/bert/github/5G_CARS_1/run/processed/',
-        roi_ratio=[34,33,33],
+        roi_ratio=[5,20,40,40],
         cv_mode=3,
         channel_params=[20e6, 5, -15]
     )
