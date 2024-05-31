@@ -139,7 +139,7 @@ if __name__ == "__main__":
     mask_path = "/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/pred/00000007_pred.png"
     img_path = "/home/bert/github/5G_CARS_1/Computer_vision/mmseg_outputs/vis/image_8.png"
 
-    roi = RoI(img_size=(576,1024), ratios=[100])
+    roi = RoI(img_size=(576,1024), ratios=[5,20,40,40])
     roi.detect_in_roi(mask_path, img_path, steering=0)
     roi.draw_roi()
 

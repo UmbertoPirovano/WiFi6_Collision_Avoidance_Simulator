@@ -36,21 +36,21 @@ class Channel_802_11:
         Bandwidth_usage = Rb / C * decimal.Decimal('100')
         return Bandwidth_usage
     
-    def __compute_tx(self, Image_size, Rb):
+    def __compute_tx(self, file_size, Rb):
         decimal.getcontext().prec = 50
-        Image_size = decimal.Decimal(str(Image_size))
+        file_size = decimal.Decimal(str(file_size))
         Rb = decimal.Decimal(str(Rb))
-        latency = Image_size / Rb
+        latency = file_size / Rb
         return latency
     
-    def perform_calculations(self, Image_size, distance):
+    def perform_calculations(self, file_size, distance):
         fspl = self.__calculate_fspl(distance)
         snr_db = self.__calculate_snr(fspl)
         snr_linear = 10 ** (snr_db / decimal.Decimal('10'))
         capacity = self.__calculate_channel_capacity(snr_linear)
         bitrate = self.__calculate_bitrate(capacity)
         usage = self.__compute_Bandwidth_usage(capacity, bitrate)
-        tx_time = self.__compute_tx(Image_size, bitrate)
+        tx_time = self.__compute_tx(file_size, bitrate)
 
         return {
             "P_tx": self.P_tx,
