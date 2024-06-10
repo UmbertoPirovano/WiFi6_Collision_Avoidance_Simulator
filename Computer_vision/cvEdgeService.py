@@ -9,6 +9,15 @@ from mmseg.apis import MMSegInferencer
 class CVEdgeService:
     def __init__(self, config=None, checkpoint=None, mode=0):
 
+        mode_dict = {
+            'medium': 0,
+            'super_light': 1,
+            'heavy': 2,
+            'light': 3
+        }
+        if isinstance(mode, str):
+            mode = mode_dict[mode]
+
         configs = [
             '/home/bert/github/5G_CARS_1/Computer_vision/configs/deeplabv3plus_r50-d8_4xb2-40k_cityscapes-512x1024.py',
             '/home/bert/github/5G_CARS_1/Computer_vision/configs/deeplabv3plus_r18-d8_4xb2-80k_cityscapes-512x1024.py',
@@ -32,7 +41,7 @@ class CVEdgeService:
             self.inferencer(img, out_dir=out_dir, show=show)
 
 if __name__ == "__main__":
-    edge_service = CVEdgeService(mode=3)
+    edge_service = CVEdgeService(mode='light')
     start_time = time.time()
     image_path = '/home/bert/github/5G_CARS_1/Airsim/images/image_7.png'
     edge_service.perform_inference(image_path, out_dir='tmp')
