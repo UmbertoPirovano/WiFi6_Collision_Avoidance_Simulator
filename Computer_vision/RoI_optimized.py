@@ -119,7 +119,6 @@ class RoI:
         self.__compute_RoI(mask_path, img_path, steering)
         roi = self.__get_pixels_in_roi()
         general_count = []
-
         for subarea in roi:
             counter = {key: 0 for key in blacklist}
             for pixel in subarea:
@@ -129,8 +128,11 @@ class RoI:
             general_count.append(counter)
 
         for i, counter in enumerate(general_count):
-            print(f'Subarea {i + 1}:')
+            area = len(roi[i])
+            print(f'Subarea {i + 1} ({area} px):')
             for key, value in counter.items():
+                counter[key] = value / area * 100
+                value = counter[key]
                 print(f'    {blacklist[key]}: {value}')
 
         return general_count
