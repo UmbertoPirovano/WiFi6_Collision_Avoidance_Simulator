@@ -109,10 +109,11 @@ class AirSimCarSimulation:
                     return
                 if occupied_area > normal_threshold:
                     slowdown_factors[i] = occupied_area / 100 * slowdown_coeff[i]                    
+                
                 if 13 in counter.keys():
-                    slowdown_factors[i] *= 2
+                    slowdown_factors[i] *= 2.10
                 elif 2 in counter.keys():
-                    slowdown_factors[i] /= 2        
+                    slowdown_factors[i] *= 0.5        
 
         new_throttle = target_throttle - sum(slowdown_factors)
         if new_throttle < 0: new_throttle = 0
