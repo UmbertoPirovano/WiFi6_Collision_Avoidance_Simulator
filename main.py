@@ -14,7 +14,6 @@ import shutil
 from Computer_vision.RoI_optimized import RoI
 from Computer_vision.cvEdgeService import CVEdgeService
 from Wireless_simulation.Wi_fi6 import Channel_802_11
-from tools.get_wsl_ip import get_wsl_ip 
 
 class AirSimCarSimulation:
     def __init__(self, client_ip, output_dir, processed_dir, roi_ratio=[100], cv_mode=3, channel_params=[20e6, 5, -15]):
@@ -102,7 +101,6 @@ class AirSimCarSimulation:
         for i, counter in enumerate(detected):
             if counter:
                 occupied_area = sum(counter.values())
-                print(f">>Occupied area in subarea {i + 1}: {occupied_area}")
                 if (i+1) <= 3 and occupied_area > emergency_threshold[i]:
                     self.__car_break()
                     print(f"Obstacle detected in subarea {i + 1}! Emergency stop!.")
@@ -111,7 +109,7 @@ class AirSimCarSimulation:
                     slowdown_factors[i] = occupied_area / 100 * slowdown_coeff[i]                    
                 
                 if 13 in counter.keys():
-                    slowdown_factors[i] *= 2.10
+                    slowdown_factors[i] *= 2.40
                 elif 2 in counter.keys():
                     slowdown_factors[i] *= 0.5        
 
@@ -124,8 +122,20 @@ class AirSimCarSimulation:
             
         
 
-    def run_simulation(self):
+    def run_simulation(self, obstacle="car", show_roi=False):
         try:
+            self.client.reset()
+
+            # Set initial position of the car
+            initial_position = self.client.simGetVehiclePose("PhysXCar").position
+            if obstacle == "fence":
+                new_position = airsim.Vector3r(initial_position.x_val + 50, initial_position.y_val, initial_position.z_val)
+                new_orientation = airsim.to_quaternion(0, 0, 0)
+            elif obstacle == "car":
+                new_position = airsim.Vector3r(initial_position.x_val, initial_position.y_val, initial_position.z_val)
+                new_orientation = airsim.to_quaternion(0, 0, 0.05)
+            self.client.simSetVehiclePose(airsim.Pose(new_position, new_orientation), ignore_collision=True, vehicle_name="PhysXCar")
+
             # Get initial state of the car
             car_state = self.client.getCarState()
             print("Speed %d, Gear %d" % (car_state.speed, car_state.gear))
@@ -136,7 +146,7 @@ class AirSimCarSimulation:
             self.client.setCarControls(self.car_controls)
 
             # Let the car drive a bit
-            time.sleep(2)
+            #time.sleep(2)
 
             while True:
                 start_time = time.time()
@@ -166,10 +176,14 @@ class AirSimCarSimulation:
                 detected = self.roi.detect_in_roi(mask_path, vis_path, steering=0)
                 self.__perform_decision(detected)
                 if self.client.getCarState().speed < 0.1:
-                    self.roi.draw_roi(vis_path)
+                    if show_roi:
+                        self.roi.draw_roi(vis_path)
                     raise Exception("Car stopped. Exiting simulation.")
         finally:
+            collision = self.client.getCarState().collision.has_collided
+            print(f"COLLISION: {collision}")
             self.__cleanup()
+            return collision
 
 if __name__ == "__main__":
     sys.tracebacklimit = 0
@@ -182,4 +196,10 @@ if __name__ == "__main__":
         cv_mode='light',
         channel_params=[20e6, 5, -15]
     )
-    simulation.run_simulation()
+    #simulation.run_simulation(obstacle="car", show_roi=False)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"run/output_{timestamp}.txt"
+    with open(filename, 'w') as f:
+        with contextlib.redirect_stdout(f):
+            simulation.run_simulation(obstacle="fence", show_roi=False)
