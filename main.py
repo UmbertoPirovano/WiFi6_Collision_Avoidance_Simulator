@@ -1,6 +1,8 @@
 import contextlib
 from datetime import datetime
 import io
+import random
+import sys
 import airsim
 import time
 import cv2
@@ -11,7 +13,8 @@ import shutil
 
 from Computer_vision.RoI_optimized import RoI
 from Computer_vision.cvEdgeService import CVEdgeService
-from Wireless_simulation.Wi_fi6 import Channel_802_11 
+from Wireless_simulation.Wi_fi6 import Channel_802_11
+from tools.get_wsl_ip import get_wsl_ip 
 
 class AirSimCarSimulation:
     def __init__(self, client_ip, output_dir, processed_dir, roi_ratio=[100], cv_mode=3, channel_params=[20e6, 5, -15]):
@@ -21,6 +24,9 @@ class AirSimCarSimulation:
         self.car_controls = airsim.CarControls()
         self.output_dir = output_dir
         self.processed_dir = processed_dir
+
+        camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(0.05, 0, 0))  #PRY in radians
+        self.client.simSetCameraPose(0, camera_pose)
 
         # Initialize other components
         with contextlib.redirect_stdout(io.StringIO()):
@@ -84,19 +90,36 @@ class AirSimCarSimulation:
         self.client.setCarControls(self.car_controls)
 
     def __perform_decision(self, detected):
-        threshold = 1200
+        # detected: list of dictionaries
+        # detected[i]: dictionary of detected objects in subarea i. Each value represents the percentage of area covered by the object
+        target_throttle = 0.5
+        slowdown_coeff = [1,1,0.55,0.17]
+        slowdown_coeff = [coeff * target_throttle for coeff in slowdown_coeff]
+        normal_threshold = int(5)
+        emergency_threshold = [5,5,80]
+
+        slowdown_factors = np.zeros(len(slowdown_coeff))
         for i, counter in enumerate(detected):
             if counter:
-                max_key = max(counter, key=lambda k: counter[k])
-                coefficient = [6,6,4,1]
-                pixel_number = counter[max_key] * coefficient[i]
-                if pixel_number > threshold:
-                    new_throttle = self.car_controls.throttle - (pixel_number/(1000) * self.car_controls.throttle*2)
-                    if new_throttle < 0:
-                        new_throttle = 0
-                    self.car_controls.throttle = new_throttle
-                    self.client.setCarControls(self.car_controls)
-                    print(f"Detected {pixel_number} in subarea {i + 1}! Throttle reduced to {new_throttle}")
+                occupied_area = sum(counter.values())
+                print(f">>Occupied area in subarea {i + 1}: {occupied_area}")
+                if (i+1) <= 3 and occupied_area > emergency_threshold[i]:
+                    self.__car_break()
+                    print(f"Obstacle detected in subarea {i + 1}! Emergency stop!.")
+                    return
+                if occupied_area > normal_threshold:
+                    slowdown_factors[i] = occupied_area / 100 * slowdown_coeff[i]                    
+                if 13 in counter.keys():
+                    slowdown_factors[i] *= 2
+                elif 2 in counter.keys():
+                    slowdown_factors[i] /= 2        
+
+        new_throttle = target_throttle - sum(slowdown_factors)
+        if new_throttle < 0: new_throttle = 0
+        self.car_controls.throttle = new_throttle
+        self.client.setCarControls(self.car_controls)
+        if new_throttle != target_throttle:
+            print(f"Throttle set to {new_throttle}")
             
         
 
@@ -141,16 +164,21 @@ class AirSimCarSimulation:
 
                 detected = self.roi.detect_in_roi(mask_path, vis_path, steering=0)
                 self.__perform_decision(detected)
+                if self.client.getCarState().speed < 0.1:
+                    self.roi.draw_roi(vis_path)
+                    raise Exception("Car stopped. Exiting simulation.")
         finally:
             self.__cleanup()
 
 if __name__ == "__main__":
+    sys.tracebacklimit = 0
+    random.seed(7)
     simulation = AirSimCarSimulation(
-        client_ip="172.21.151.58",
+        client_ip='192.168.1.61',
         output_dir='/home/bert/github/5G_CARS_1/run/received/',
         processed_dir='/home/bert/github/5G_CARS_1/run/processed/',
         roi_ratio=[5,20,40,40],
-        cv_mode=3,
+        cv_mode='light',
         channel_params=[20e6, 5, -15]
     )
     simulation.run_simulation()
