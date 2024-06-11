@@ -39,8 +39,8 @@ class AirSimCarSimulation:
         self.chronos_inference = []
         self.chronos_actuation = []
 
-    def __capture_image(self, save=True):
-        response = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)])
+    def __capture_image(self, save=True, output_format='JPEG', quality=80):
+        response = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, pixels_as_float=False, compress=False)])
         img = np.frombuffer(response[0].image_data_uint8, dtype=np.uint8)
         img = img.reshape(response[0].height, response[0].width, 3)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -48,9 +48,10 @@ class AirSimCarSimulation:
 
         os.makedirs(self.output_dir, exist_ok=True)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(self.output_dir, f'image_{timestamp}.png')
+        output_file = os.path.join(self.output_dir, f'image_{timestamp}.{output_format.lower()}')
+        
         if save:
-            img.save(output_file)
+            img.save(output_file, format=output_format, quality=quality)
         print(f"Image saved to {output_file}")
         return output_file
 
@@ -64,13 +65,17 @@ class AirSimCarSimulation:
         return distance
 
     def __cleanup(self):
-        print("Simulation terminated. Resetting AirSim.")
-        shutil.rmtree(self.output_dir)
-        shutil.rmtree(self.processed_dir)
-        self.client.reset()
-        self.client.enableApiControl(False)
-        self.client.armDisarm(False)
-        self.__print_timings()
+        try:
+            print("Simulation terminated. Resetting AirSim.")
+            shutil.rmtree(self.output_dir)
+            shutil.rmtree(self.processed_dir)
+            self.client.reset()
+            self.client.enableApiControl(False)
+            self.client.armDisarm(False)
+            self.__print_timings()
+        except Exception as e:
+            print(f"Cleanup failed: {e}")
+
 
     def __print_timings(self):
         print("Average time for capture: ", sum(self.chronos_capture) / len(self.chronos_capture))
@@ -119,8 +124,6 @@ class AirSimCarSimulation:
         self.client.setCarControls(self.car_controls)
         if new_throttle != target_throttle:
             print(f"Throttle set to {new_throttle}")
-            
-        
 
     def run_simulation(self, obstacle="car", show_roi=False):
         try:
@@ -178,7 +181,10 @@ class AirSimCarSimulation:
                 if self.client.getCarState().speed < 0.1:
                     if show_roi:
                         self.roi.draw_roi(vis_path)
+                    print("Car stopped. Exiting simulation.")
                     raise Exception("Car stopped. Exiting simulation.")
+        except Exception as e:
+            print(f"Error during simulation loop: {e}")
         finally:
             collision = self.client.getCarState().collision.has_collided
             print(f"COLLISION: {collision}")
@@ -202,4 +208,4 @@ if __name__ == "__main__":
     filename = f"run/output_{timestamp}.txt"
     with open(filename, 'w') as f:
         with contextlib.redirect_stdout(f):
-            simulation.run_simulation(obstacle="fence", show_roi=False)
+            simulation.run_simulation(obstacle="fence", show_roi=True)
