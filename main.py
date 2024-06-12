@@ -11,20 +11,19 @@ from PIL import Image
 import os
 import shutil
 
-from Computer_vision.RoI_optimized import RoI
 from Computer_vision.cvEdgeService import CVEdgeService
 from Wireless_simulation.Wi_fi6 import Channel_802_11
 
 class AirSimCarSimulation:
-    def __init__(self, directory, client_ip, roi_ratio=[100], cv_mode=3, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80):
+    def __init__(self, directory, client_ip, cv_mode=3, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80):
         self.client = airsim.CarClient(ip=client_ip)
         self.client.confirmConnection()
         self.client.enableApiControl(True)
         self.car_controls = airsim.CarControls()
         self.directory = directory
-        self.received_dir = directory + 'received/'
-        self.processed_dir = directory + 'processed/'
-        self.log_dir = directory + 'log/'
+        self.received_dir = os.path.join(directory, 'received/')
+        self.processed_dir = os.path.join(directory, 'processed/')
+        self.log_dir = os.path.join(directory, 'log/')
         self.image_format = image_format
         self.image_quality = image_quality
 
@@ -42,8 +41,7 @@ class AirSimCarSimulation:
 
         # Initialize other components
         with contextlib.redirect_stdout(io.StringIO()):
-            self.edge_service = CVEdgeService(mode=cv_mode)
-        self.roi = RoI(ratios=roi_ratio)
+            self.edge_service = CVEdgeService(mode=cv_mode, out_dir=self.processed_dir)
         self.channel_calculator = Channel_802_11(available_bandwidth=channel_params[0], frequency=channel_params[1], P_tx=channel_params[2])
 
         # Timing records
@@ -86,7 +84,6 @@ class AirSimCarSimulation:
         except Exception as e:
             print(f"Cleanup failed: {e}")
 
-
     def __print_timings(self):
         print("Average time for capture: ", sum(self.chronos_capture) / len(self.chronos_capture))
         print("Average time for tx: ", sum(self.chronos_tx) / len(self.chronos_tx))
@@ -98,45 +95,7 @@ class AirSimCarSimulation:
         ) / len(self.chronos_capture)
         print("Total average time: ", total_average_time)
 
-    def __car_break(self):
-        self.car_controls.throttle = 0
-        self.car_controls.brake = 1
-        self.client.setCarControls(self.car_controls)
-
-    def __perform_decision(self, detected):
-        # detected: list of dictionaries
-        # detected[i]: dictionary of detected objects in subarea i. Each value represents the percentage of area covered by the object
-        target_throttle = 0.5
-        slowdown_coeff = [1,1,0.55,0.17]
-        slowdown_coeff = [coeff * target_throttle for coeff in slowdown_coeff]
-        normal_threshold = int(5)
-        emergency_threshold = [5,5,80]
-
-        slowdown_factors = np.zeros(len(slowdown_coeff))
-        for i, counter in enumerate(detected):
-            if counter:
-                occupied_area = sum(counter.values())
-                if (i+1) <= 3 and occupied_area > emergency_threshold[i]:
-                    self.__car_break()
-                    print(f"Obstacle detected in subarea {i + 1}! Emergency stop!.")
-                    return
-                if occupied_area > normal_threshold:
-                    slowdown_factors[i] = occupied_area / 100 * slowdown_coeff[i]                    
-                
-                # TODO: Provide a weight for each object type
-                if 13 in counter.keys():
-                    slowdown_factors[i] *= 2.40
-                elif 2 in counter.keys():
-                    slowdown_factors[i] *= 0.5        
-
-        new_throttle = target_throttle - sum(slowdown_factors)
-        if new_throttle < 0: new_throttle = 0
-        self.car_controls.throttle = new_throttle
-        self.client.setCarControls(self.car_controls)
-        if new_throttle != target_throttle:
-            print(f"Throttle set to {new_throttle}")
-
-    def run_simulation(self, obstacle="car", show_roi=False):
+    def run_simulation(self, obstacle="car"):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = self.log_dir + f"output_{timestamp}.txt"
         with open(filename, 'w') as f:
@@ -180,22 +139,17 @@ class AirSimCarSimulation:
                         time.sleep(float(tx_time))
                         self.chronos_tx.append(time.time() - start_time)
 
+                        # EDGE SERVICE
                         start_time = time.time()
-                        self.edge_service.perform_inference(img_path, self.processed_dir)
+                        self.edge_service.perform_inference(img_path)
                         self.chronos_inference.append(time.time() - start_time)
+                        detected = self.edge_service.perform_detection(self.processed_dir, steering=0)
+                        action = self.edge_service.perform_decision(detected)
+                        
+                        # ACTUATION
+                        self.client.setCarControls(action)
 
-                        # Get the path to the last png added to processed_dir
-                        mask_files = sorted(os.listdir(os.path.join(self.processed_dir, 'pred')))
-                        view_files = sorted(os.listdir(os.path.join(self.processed_dir, 'vis')))
-                        mask_path = os.path.join(self.processed_dir, 'pred', mask_files[-1])
-                        vis_path = os.path.join(self.processed_dir, 'vis', view_files[-1])
-                        print(f"Mask path: {mask_path}")
-
-                        detected = self.roi.detect_in_roi(mask_path, vis_path, steering=0)
-                        self.__perform_decision(detected)
                         if self.client.getCarState().speed < 0.1:
-                            if show_roi:
-                                self.roi.draw_roi(vis_path)
                             print("Car stopped. Exiting simulation.")
                             raise Exception("Car stopped. Exiting simulation.")
                 except Exception as e:
@@ -210,12 +164,11 @@ if __name__ == "__main__":
     sys.tracebacklimit = 0
     random.seed(7)
     simulation = AirSimCarSimulation(
-        client_ip='192.168.4.80',
+        client_ip='192.168.1.61',
         directory = '/home/bert/github/5G_CARS_1/run/',
-        roi_ratio=[5,20,40,40],
         cv_mode='light',
         channel_params=[20e6, 5, -15],
         image_format='JPEG',
         image_quality=80
     )
-    simulation.run_simulation(obstacle="car", show_roi=False)
+    simulation.run_simulation(obstacle="fence")
