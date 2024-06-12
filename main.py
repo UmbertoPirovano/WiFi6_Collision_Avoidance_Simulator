@@ -16,13 +16,26 @@ from Computer_vision.cvEdgeService import CVEdgeService
 from Wireless_simulation.Wi_fi6 import Channel_802_11
 
 class AirSimCarSimulation:
-    def __init__(self, client_ip, output_dir, processed_dir, roi_ratio=[100], cv_mode=3, channel_params=[20e6, 5, -15]):
+    def __init__(self, directory, client_ip, roi_ratio=[100], cv_mode=3, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80):
         self.client = airsim.CarClient(ip=client_ip)
         self.client.confirmConnection()
         self.client.enableApiControl(True)
         self.car_controls = airsim.CarControls()
-        self.output_dir = output_dir
-        self.processed_dir = processed_dir
+        self.directory = directory
+        self.received_dir = directory + 'received/'
+        self.processed_dir = directory + 'processed/'
+        self.log_dir = directory + 'log/'
+        self.image_format = image_format
+        self.image_quality = image_quality
+
+        try:
+            shutil.rmtree(self.received_dir)
+            shutil.rmtree(self.processed_dir)
+        except FileNotFoundError:
+            pass
+        os.makedirs(self.received_dir, exist_ok=True)
+        os.makedirs(self.processed_dir, exist_ok=True)
+        os.makedirs(self.log_dir, exist_ok=True)
 
         camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(0.05, 0, 0))  #PRY in radians
         self.client.simSetCameraPose(0, camera_pose)
@@ -46,9 +59,8 @@ class AirSimCarSimulation:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)
 
-        os.makedirs(self.output_dir, exist_ok=True)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(self.output_dir, f'image_{timestamp}.{output_format.lower()}')
+        output_file = os.path.join(self.received_dir, f'image_{timestamp}.{output_format.lower()}')
         
         if save:
             img.save(output_file, format=output_format, quality=quality)
@@ -67,8 +79,6 @@ class AirSimCarSimulation:
     def __cleanup(self):
         try:
             print("Simulation terminated. Resetting AirSim.")
-            shutil.rmtree(self.output_dir)
-            shutil.rmtree(self.processed_dir)
             self.client.reset()
             self.client.enableApiControl(False)
             self.client.armDisarm(False)
@@ -113,6 +123,7 @@ class AirSimCarSimulation:
                 if occupied_area > normal_threshold:
                     slowdown_factors[i] = occupied_area / 100 * slowdown_coeff[i]                    
                 
+                # TODO: Provide a weight for each object type
                 if 13 in counter.keys():
                     slowdown_factors[i] *= 2.40
                 elif 2 in counter.keys():
@@ -126,86 +137,85 @@ class AirSimCarSimulation:
             print(f"Throttle set to {new_throttle}")
 
     def run_simulation(self, obstacle="car", show_roi=False):
-        try:
-            self.client.reset()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = self.log_dir + f"output_{timestamp}.txt"
+        with open(filename, 'w') as f:
+            with contextlib.redirect_stdout(f):
+                try:
+                    self.client.reset()
 
-            # Set initial position of the car
-            initial_position = self.client.simGetVehiclePose("PhysXCar").position
-            if obstacle == "fence":
-                new_position = airsim.Vector3r(initial_position.x_val + 50, initial_position.y_val, initial_position.z_val)
-                new_orientation = airsim.to_quaternion(0, 0, 0)
-            elif obstacle == "car":
-                new_position = airsim.Vector3r(initial_position.x_val, initial_position.y_val, initial_position.z_val)
-                new_orientation = airsim.to_quaternion(0, 0, 0.05)
-            self.client.simSetVehiclePose(airsim.Pose(new_position, new_orientation), ignore_collision=True, vehicle_name="PhysXCar")
+                    # Set initial position of the car
+                    initial_position = self.client.simGetVehiclePose("PhysXCar").position
+                    if obstacle == "fence":
+                        new_position = airsim.Vector3r(initial_position.x_val + 50, initial_position.y_val, initial_position.z_val)
+                        new_orientation = airsim.to_quaternion(0, 0, 0)
+                    elif obstacle == "car":
+                        new_position = airsim.Vector3r(initial_position.x_val, initial_position.y_val, initial_position.z_val)
+                        new_orientation = airsim.to_quaternion(0, 0, 0.05)
+                    self.client.simSetVehiclePose(airsim.Pose(new_position, new_orientation), ignore_collision=True, vehicle_name="PhysXCar")
 
-            # Get initial state of the car
-            car_state = self.client.getCarState()
-            print("Speed %d, Gear %d" % (car_state.speed, car_state.gear))
+                    # Get initial state of the car
+                    car_state = self.client.getCarState()
+                    print("Speed %d, Gear %d" % (car_state.speed, car_state.gear))
 
-            # Set initial controls for the car
-            self.car_controls.throttle = 0.5
-            self.car_controls.steering = 0
-            self.client.setCarControls(self.car_controls)
+                    # Set initial controls for the car
+                    self.car_controls.throttle = 0.5
+                    self.car_controls.steering = 0
+                    self.client.setCarControls(self.car_controls)
 
-            # Let the car drive a bit
-            #time.sleep(2)
+                    # Let the car drive a bit
+                    #time.sleep(2)
+                    
+                    while True:
+                        start_time = time.time()
+                        img_path = self.__capture_image(output_format=self.image_format, quality=self.image_quality)
+                        self.chronos_capture.append(time.time() - start_time)
 
-            while True:
-                start_time = time.time()
-                img_path = self.__capture_image()
-                self.chronos_capture.append(time.time() - start_time)
+                        # Transmission img -> edge
+                        start_time = time.time()
+                        tx_time = self.channel_calculator.perform_calculations(
+                            file_size=os.path.getsize(img_path),
+                            distance=self.__compute_distance(self.client.getCarState())
+                        )["tx_time"]
+                        time.sleep(float(tx_time))
+                        self.chronos_tx.append(time.time() - start_time)
 
-                # Transmission img -> edge
-                start_time = time.time()
-                tx_time = self.channel_calculator.perform_calculations(
-                    file_size=os.path.getsize(img_path),
-                    distance=self.__compute_distance(self.client.getCarState())
-                )["tx_time"]
-                time.sleep(float(tx_time))
-                self.chronos_tx.append(time.time() - start_time)
+                        start_time = time.time()
+                        self.edge_service.perform_inference(img_path, self.processed_dir)
+                        self.chronos_inference.append(time.time() - start_time)
 
-                start_time = time.time()
-                self.edge_service.perform_inference(img_path, self.processed_dir)
-                self.chronos_inference.append(time.time() - start_time)
+                        # Get the path to the last png added to processed_dir
+                        mask_files = sorted(os.listdir(os.path.join(self.processed_dir, 'pred')))
+                        view_files = sorted(os.listdir(os.path.join(self.processed_dir, 'vis')))
+                        mask_path = os.path.join(self.processed_dir, 'pred', mask_files[-1])
+                        vis_path = os.path.join(self.processed_dir, 'vis', view_files[-1])
+                        print(f"Mask path: {mask_path}")
 
-                # Get the path to the last png added to processed_dir
-                mask_files = sorted(os.listdir(os.path.join(self.processed_dir, 'pred')))
-                view_files = sorted(os.listdir(os.path.join(self.processed_dir, 'vis')))
-                mask_path = os.path.join(self.processed_dir, 'pred', mask_files[-1])
-                vis_path = os.path.join(self.processed_dir, 'vis', view_files[-1])
-                print(f"Mask path: {mask_path}")
-
-                detected = self.roi.detect_in_roi(mask_path, vis_path, steering=0)
-                self.__perform_decision(detected)
-                if self.client.getCarState().speed < 0.1:
-                    if show_roi:
-                        self.roi.draw_roi(vis_path)
-                    print("Car stopped. Exiting simulation.")
-                    raise Exception("Car stopped. Exiting simulation.")
-        except Exception as e:
-            print(f"Error during simulation loop: {e}")
-        finally:
-            collision = self.client.getCarState().collision.has_collided
-            print(f"COLLISION: {collision}")
-            self.__cleanup()
-            return collision
+                        detected = self.roi.detect_in_roi(mask_path, vis_path, steering=0)
+                        self.__perform_decision(detected)
+                        if self.client.getCarState().speed < 0.1:
+                            if show_roi:
+                                self.roi.draw_roi(vis_path)
+                            print("Car stopped. Exiting simulation.")
+                            raise Exception("Car stopped. Exiting simulation.")
+                except Exception as e:
+                    print(f"Error during simulation loop: {e}")
+                finally:
+                    collision = self.client.getCarState().collision.has_collided
+                    print(f"COLLISION: {collision}")
+                    self.__cleanup()
+                    return collision
 
 if __name__ == "__main__":
     sys.tracebacklimit = 0
     random.seed(7)
     simulation = AirSimCarSimulation(
-        client_ip='192.168.1.61',
-        output_dir='/home/bert/github/5G_CARS_1/run/received/',
-        processed_dir='/home/bert/github/5G_CARS_1/run/processed/',
+        client_ip='192.168.4.80',
+        directory = '/home/bert/github/5G_CARS_1/run/',
         roi_ratio=[5,20,40,40],
         cv_mode='light',
-        channel_params=[20e6, 5, -15]
+        channel_params=[20e6, 5, -15],
+        image_format='JPEG',
+        image_quality=80
     )
-    #simulation.run_simulation(obstacle="car", show_roi=False)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"run/output_{timestamp}.txt"
-    with open(filename, 'w') as f:
-        with contextlib.redirect_stdout(f):
-            simulation.run_simulation(obstacle="fence", show_roi=True)
+    simulation.run_simulation(obstacle="car", show_roi=False)
