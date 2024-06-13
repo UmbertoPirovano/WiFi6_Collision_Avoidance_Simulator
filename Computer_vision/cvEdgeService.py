@@ -12,10 +12,13 @@ from Computer_vision.RoI_optimized import RoI
 
 
 class CVEdgeService:
-    def __init__(self, config=None, checkpoint=None, mode=0, out_dir='results', roi_ratio=[5,20,40,40]):
+    def __init__(self, config=None, checkpoint=None, mode=0, out_dir='results', roi_ratio=[5,20,40,40], decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}):
         
         self.out_dir = out_dir        
         self.roi = RoI(img_size=(576,1024), ratios=roi_ratio)
+        self.slowdown_coeff = decision_params['slowdown_coeff']
+        self.normal_threshold = decision_params['normal_threshold']
+        self.emergency_threshold = decision_params['emergency_threshold']
 
         mode_dict = {
             'medium': 0,
@@ -42,7 +45,7 @@ class CVEdgeService:
         config = configs[mode]
         checkpoint = checkpoints[mode]
         with contextlib.redirect_stdout(io.StringIO()):
-            self.inferencer = MMSegInferencer(model=config, weights=checkpoint, device='cuda:0')
+            self.inferencer = MMSegInferencer(model=config, weights=checkpoint, device=None)
 
     def perform_inference(self, img, show_result=False):
         print(f"EDGE: Performing inference on {img}")
@@ -67,23 +70,20 @@ class CVEdgeService:
         print(f"EDGE: Computing decision")
         # detected: list of dictionaries
         # detected[i]: dictionary of detected objects in subarea i. Each value represents the percentage of area covered by the object
-        target_throttle = 0.5
-        slowdown_coeff = [1,1,0.55,0.17]
-        slowdown_coeff = [coeff * target_throttle for coeff in slowdown_coeff]
-        normal_threshold = int(5)
-        emergency_threshold = [5,5,80]
+        target_throttle = 0.5        
+        slowdown_coeff = [coeff * target_throttle for coeff in self.slowdown_coeff]
         slowdown_factors = np.zeros(len(slowdown_coeff))
 
         action = airsim.CarControls()
         for i, counter in enumerate(detected):
             if counter:
                 occupied_area = sum(counter.values())
-                if (i+1) <= 3 and occupied_area > emergency_threshold[i]:
+                if (i+1) <= 3 and occupied_area > self.emergency_threshold[i]:
                     action.throttle = 0
                     action.brake = 1
                     print(f"Obstacle detected in subarea {i + 1}! Emergency stop!.")
                     return action
-                if occupied_area > normal_threshold:
+                if occupied_area > self.normal_threshold:
                     slowdown_factors[i] = occupied_area / 100 * slowdown_coeff[i]                    
                 
                 # TODO: Provide a weight for each object type
