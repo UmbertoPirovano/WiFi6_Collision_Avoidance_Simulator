@@ -30,16 +30,16 @@ class CVEdgeService:
             mode = mode_dict[mode]
 
         configs = [
-            '/home/bert/github/5G_CARS_1/Computer_vision/configs/deeplabv3plus_r50-d8_4xb2-40k_cityscapes-512x1024.py',
-            '/home/bert/github/5G_CARS_1/Computer_vision/configs/deeplabv3plus_r18-d8_4xb2-80k_cityscapes-512x1024.py',
-            '/home/bert/github/5G_CARS_1/Computer_vision/configs/deeplabv3plus_r101-d8_4xb2-amp-80k_cityscapes-512x1024.py',
-            '/home/bert/github/5G_CARS_1/Computer_vision/configs/deeplabv3plus_r101-d16-mg124_4xb2-80k_cityscapes-512x1024.py'
+            '../mmsegmentation/configs/deeplabv3plus/deeplabv3plus_r50-d8_4xb2-40k_cityscapes-512x1024.py',
+            '../mmsegmentation/configs/deeplabv3plus/deeplabv3plus_r18-d8_4xb2-80k_cityscapes-512x1024.py',
+            '../mmsegmentation/configs/deeplabv3plus/deeplabv3plus_r101-d8_4xb2-amp-80k_cityscapes-512x1024.py',
+            '../mmsegmentation/configs/deeplabv3plus/deeplabv3plus_r101-d16-mg124_4xb2-80k_cityscapes-512x1024.py'
         ]
         checkpoints = [
-            '/home/bert/github/5G_CARS_1/Computer_vision/checkpoints/deeplabv3plus_r50-d8_512x1024_40k_cityscapes_20200605_094610-d222ffcd.pth',
-            '/home/bert/github/5G_CARS_1/Computer_vision/checkpoints/deeplabv3plus_r18-d8_512x1024_80k_cityscapes_20201226_080942-cff257fe.pth',
-            '/home/bert/github/5G_CARS_1/Computer_vision/checkpoints/deeplabv3plus_r101-d8_fp16_512x1024_80k_cityscapes_20200717_230920-f1104f4b.pth',
-            '/home/bert/github/5G_CARS_1/Computer_vision/checkpoints/deeplabv3plus_r101-d16-mg124_512x1024_40k_cityscapes_20200908_005644-cf9ce186.pth'
+            './Computer_vision/checkpoints/deeplabv3plus_r50-d8_512x1024_40k_cityscapes_20200605_094610-d222ffcd.pth',
+            './Computer_vision/checkpoints/deeplabv3plus_r18-d8_512x1024_80k_cityscapes_20201226_080942-cff257fe.pth',
+            './Computer_vision/checkpoints/deeplabv3plus_r101-d8_fp16_512x1024_80k_cityscapes_20200717_230920-f1104f4b.pth',
+            './Computer_vision/checkpoints/deeplabv3plus_r101-d16-mg124_512x1024_40k_cityscapes_20200908_005644-cf9ce186.pth'
         ]
 
         config = configs[mode]
