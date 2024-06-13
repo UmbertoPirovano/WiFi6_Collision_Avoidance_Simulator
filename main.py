@@ -15,7 +15,7 @@ from Computer_vision.cvEdgeService import CVEdgeService
 from Wireless_simulation.Wi_fi6 import Channel_802_11
 
 class AirSimCarSimulation:
-    def __init__(self, directory, client_ip, cv_mode=3, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80, decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}):
+    def __init__(self, directory, client_ip, cv_mode=3, inf_time=None, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80, decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}):
         self.client = airsim.CarClient(ip=client_ip)
         self.client.confirmConnection()
         self.car_controls = airsim.CarControls()
@@ -26,6 +26,7 @@ class AirSimCarSimulation:
         self.image_format = image_format
         self.image_quality = image_quality
         self.decision_params = decision_params
+        self.inf_time = inf_time
 
         camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(0.05, 0, 0))  #PRY in radians
         self.client.simSetCameraPose(0, camera_pose)
@@ -128,7 +129,7 @@ class AirSimCarSimulation:
                     self.client.setCarControls(self.car_controls)
 
                     # Let the car drive a bit
-                    #time.sleep(2)
+                    time.sleep(1)
                     
                     while True:
                         start_time = time.time()
@@ -146,8 +147,15 @@ class AirSimCarSimulation:
 
                         # EDGE SERVICE
                         start_time = time.time()
+                        if self.inf_time is not None:
+                            self.client.simPause(True)
                         self.edge_service.perform_inference(img_path)
-                        self.chronos_inference.append(time.time() - start_time)
+                        if self.inf_time is not None:
+                            self.client.simPause(False)
+                            time.sleep(self.inf_time)
+                            self.chronos_inference.append(self.inf_time)
+                        else:
+                            self.chronos_inference.append(time.time() - start_time)
                         detected = self.edge_service.perform_detection(self.processed_dir, steering=0)
                         action = self.edge_service.perform_decision(detected)
                         
@@ -172,6 +180,7 @@ if __name__ == "__main__":
         client_ip='192.168.1.61',
         directory = '/home/bert/github/5G_CARS_1/run/',
         cv_mode='light',
+        inf_time=1,
         channel_params=[20e6, 5, -15],
         image_format='JPEG',
         image_quality=80,
