@@ -18,7 +18,6 @@ class AirSimCarSimulation:
     def __init__(self, directory, client_ip, cv_mode=3, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80):
         self.client = airsim.CarClient(ip=client_ip)
         self.client.confirmConnection()
-        self.client.enableApiControl(True)
         self.car_controls = airsim.CarControls()
         self.directory = directory
         self.received_dir = os.path.join(directory, 'received/')
@@ -26,15 +25,6 @@ class AirSimCarSimulation:
         self.log_dir = os.path.join(directory, 'log/')
         self.image_format = image_format
         self.image_quality = image_quality
-
-        try:
-            shutil.rmtree(self.received_dir)
-            shutil.rmtree(self.processed_dir)
-        except FileNotFoundError:
-            pass
-        os.makedirs(self.received_dir, exist_ok=True)
-        os.makedirs(self.processed_dir, exist_ok=True)
-        os.makedirs(self.log_dir, exist_ok=True)
 
         camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(0.05, 0, 0))  #PRY in radians
         self.client.simSetCameraPose(0, camera_pose)
@@ -49,6 +39,27 @@ class AirSimCarSimulation:
         self.chronos_tx = []
         self.chronos_inference = []
         self.chronos_actuation = []
+
+    def __init_simulation(self):
+        self.client.enableApiControl(True)
+        try:
+            shutil.rmtree(self.received_dir)
+            shutil.rmtree(self.processed_dir)
+        except FileNotFoundError:
+            pass
+        os.makedirs(self.received_dir, exist_ok=True)
+        os.makedirs(self.processed_dir, exist_ok=True)
+        os.makedirs(self.log_dir, exist_ok=True)
+
+    def __cleanup(self):
+        try:
+            print("Simulation terminated. Resetting AirSim.")
+            self.client.reset()
+            self.client.enableApiControl(False)
+            self.client.armDisarm(False)
+            self.__print_timings()
+        except Exception as e:
+            print(f"Cleanup failed: {e}")
 
     def __capture_image(self, save=True, output_format='JPEG', quality=80):
         response = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.Scene, pixels_as_float=False, compress=False)])
@@ -74,16 +85,6 @@ class AirSimCarSimulation:
         )
         return distance
 
-    def __cleanup(self):
-        try:
-            print("Simulation terminated. Resetting AirSim.")
-            self.client.reset()
-            self.client.enableApiControl(False)
-            self.client.armDisarm(False)
-            self.__print_timings()
-        except Exception as e:
-            print(f"Cleanup failed: {e}")
-
     def __print_timings(self):
         print("Average time for capture: ", sum(self.chronos_capture) / len(self.chronos_capture))
         print("Average time for tx: ", sum(self.chronos_tx) / len(self.chronos_tx))
@@ -96,10 +97,13 @@ class AirSimCarSimulation:
         print("Total average time: ", total_average_time)
 
     def run_simulation(self, obstacle="car"):
+        self.__init_simulation()        
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = self.log_dir + f"output_{timestamp}.txt"
+        
         with open(filename, 'w') as f:
             with contextlib.redirect_stdout(f):
+                print(f"{timestamp} >>Starting simulation with obstacle: {obstacle}\n")
                 try:
                     self.client.reset()
 
@@ -155,7 +159,7 @@ class AirSimCarSimulation:
                 except Exception as e:
                     print(f"Error during simulation loop: {e}")
                 finally:
-                    collision = self.client.getCarState().collision.has_collided
+                    collision = self.client.simGetCollisionInfo(vehicle_name='PhysXCar').has_collided
                     print(f"COLLISION: {collision}")
                     self.__cleanup()
                     return collision
@@ -172,3 +176,4 @@ if __name__ == "__main__":
         image_quality=80
     )
     simulation.run_simulation(obstacle="fence")
+    simulation.run_simulation(obstacle="car")
