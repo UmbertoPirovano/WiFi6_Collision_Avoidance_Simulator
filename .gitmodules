@@ -1,3 +1,0 @@
-[submodule "mmsegmentation"]
-	path = mmsegmentation
-	url = ./mmsegmentation
