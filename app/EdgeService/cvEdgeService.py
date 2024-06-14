@@ -6,6 +6,7 @@ import time
 import airsim
 from mmseg.apis import MMSegInferencer
 import numpy as np
+import requests
 
 from EdgeService.RoI_optimized import RoI
 
@@ -35,15 +36,37 @@ class CVEdgeService:
             'mmsegmentation/configs/deeplabv3plus/deeplabv3plus_r101-d8_4xb2-amp-80k_cityscapes-512x1024.py',
             'mmsegmentation/configs/deeplabv3plus/deeplabv3plus_r101-d16-mg124_4xb2-80k_cityscapes-512x1024.py'
         ]
-        checkpoints = [
-            'app/EdgeService/checkpoints/deeplabv3plus_r50-d8_512x1024_40k_cityscapes_20200605_094610-d222ffcd.pth',
-            'app/EdgeService/checkpoints/deeplabv3plus_r18-d8_512x1024_80k_cityscapes_20201226_080942-cff257fe.pth',
-            'app/EdgeService/checkpoints/deeplabv3plus_r101-d8_fp16_512x1024_80k_cityscapes_20200717_230920-f1104f4b.pth',
-            'app/EdgeService/checkpoints/deeplabv3plus_r101-d16-mg124_512x1024_40k_cityscapes_20200908_005644-cf9ce186.pth'
-        ]
-
         config = configs[mode]
-        checkpoint = checkpoints[mode]
+
+        checkpoints = {
+            'app/EdgeService/checkpoints/deeplabv3plus_r50-d8_512x1024_40k_cityscapes_20200605_094610-d222ffcd.pth': 'https://download.openmmlab.com/mmsegmentation/v0.5/deeplabv3plus/deeplabv3plus_r50-d8_512x1024_40k_cityscapes/deeplabv3plus_r50-d8_512x1024_40k_cityscapes_20200605_094610-d222ffcd.pth',
+            'app/EdgeService/checkpoints/deeplabv3plus_r18-d8_512x1024_80k_cityscapes_20201226_080942-cff257fe.pth': 'https://download.openmmlab.com/mmsegmentation/v0.5/deeplabv3plus/deeplabv3plus_r18-d8_512x1024_80k_cityscapes/deeplabv3plus_r18-d8_512x1024_80k_cityscapes_20201226_080942-cff257fe.pth',
+            'app/EdgeService/checkpoints/deeplabv3plus_r101-d8_fp16_512x1024_80k_cityscapes_20200717_230920-f1104f4b.pth': 'https://download.openmmlab.com/mmsegmentation/v0.5/deeplabv3plus/deeplabv3plus_r101-d8_fp16_512x1024_80k_cityscapes/deeplabv3plus_r101-d8_fp16_512x1024_80k_cityscapes_20200717_230920-f1104f4b.pth',
+            'app/EdgeService/checkpoints/deeplabv3plus_r101-d16-mg124_512x1024_40k_cityscapes_20200908_005644-cf9ce186.pth': 'https://download.openmmlab.com/mmsegmentation/v0.5/deeplabv3plus/deeplabv3plus_r101-d16-mg124_512x1024_40k_cityscapes/deeplabv3plus_r101-d16-mg124_512x1024_40k_cityscapes_20200908_005644-cf9ce186.pth'
+        }
+        checkpoint = list(checkpoints.keys())[mode]
+        url = list(checkpoints.values())[mode]
+
+        def download_file(url, dest):
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
+                with open(dest, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=1024):
+                        file.write(chunk)
+                print(f'Successfully downloaded {dest}')
+            else:
+                print(f'Failed to download {url}')
+
+        # Ensure the checkpoints directory exists
+        os.makedirs('app/EdgeService/checkpoints', exist_ok=True)
+
+        # Check for each checkpoint file and download if it doesn't exist
+        if not os.path.exists(checkpoint):
+            print(f'{checkpoint} not found. Downloading...')
+            download_file(url, checkpoint)
+        else:
+            print(f'{checkpoint} already exists.')
+
         with contextlib.redirect_stdout(io.StringIO()):
             self.inferencer = MMSegInferencer(model=config, weights=checkpoint, device=None)
 
