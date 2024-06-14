@@ -27,9 +27,12 @@ RUN ["/bin/bash", "-c", "pip install openmim"]
 RUN ["/bin/bash", "-c", "mim install mmengine"]
 RUN ["/bin/bash", "-c", "mim install mmcv==${MMCV}"]
 
+# Copy your project files into the Docker image
+WORKDIR /5GCAR1
+COPY . /5GCAR1
+
 # Install MMSegmentation
-RUN git clone -b main https://github.com/open-mmlab/mmsegmentation.git /mmsegmentation
-WORKDIR /mmsegmentation
+WORKDIR /5GCAR1/mmsegmentation
 ENV FORCE_CUDA="1"
 RUN pip install -r requirements.txt
 RUN pip install --no-cache-dir -e .
@@ -38,9 +41,5 @@ RUN pip install --no-cache-dir -e .
 RUN pip install msgpack-rpc-python
 RUN pip install airsim
 
-# Copy your project files into the Docker image
-WORKDIR /docker_app
-COPY . /docker_app
-
 # Set the entry point or command
-CMD ["python", "main.py"]
+CMD ["python", "/5GCAR1/app/main.py"]
