@@ -24,7 +24,8 @@ def plot_tx_time_vs_distance(available_bandwidths, frequency, distance, file_siz
 
     plt.xlabel('Distance (m)')
     plt.ylabel('tx_time (ms)')
-    plt.title('Average Transmission Time vs Distance for Wi-Fi 6')
+    plt.ylim(0,14)
+    plt.title('Average Transmission Time of the image vs Distance (Application layer)')
     plt.legend()
     plt.grid(True)
     plt.show()
