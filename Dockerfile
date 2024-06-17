@@ -40,6 +40,9 @@ RUN pip install --no-cache-dir -e .
 # Install AirSim
 RUN pip install msgpack-rpc-python
 RUN pip install airsim
+RUN pip install customtkinter
+
+ENV NVIDIA_VISIBLE_DEVICES=all
 
 # Set the entry point or command
 CMD ["python", "/5GCAR1/app/main.py"]
