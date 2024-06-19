@@ -15,7 +15,8 @@ from EdgeService.cvEdgeService import CVEdgeService
 from Wireless_simulation.Wi_fi6 import Channel_802_11
 
 class AirSimCarSimulation:
-    def __init__(self, directory, client_ip, cv_mode=3, inf_time=None, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80, decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}):
+    def __init__(self, gui=None, directory = "./run/", client_ip = "", cv_mode=3, inf_time=None, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80, decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}):
+        self.gui = gui
         self.client = airsim.CarClient(ip=client_ip)
         self.client.confirmConnection()
         self.car_controls = airsim.CarControls()
@@ -40,7 +41,6 @@ class AirSimCarSimulation:
         self.chronos_capture = []
         self.chronos_tx = []
         self.chronos_inference = []
-        self.chronos_actuation = []
 
     def __init_simulation(self):
         self.client.enableApiControl(True)
@@ -162,6 +162,10 @@ class AirSimCarSimulation:
                         # ACTUATION
                         self.client.setCarControls(action)
 
+                        # UPDATE GUI
+                        if self.gui is not None:
+                            self.gui.update_gui(times=[self.chronos_capture, self.chronos_tx, self.chronos_inference])
+
                         if self.client.getCarState().speed < 0.1:
                             print("Car stopped. Exiting simulation.")
                             raise Exception("Car stopped. Exiting simulation.")
@@ -177,7 +181,7 @@ if __name__ == "__main__":
     sys.tracebacklimit = 0
     random.seed(7)
     simulation = AirSimCarSimulation(
-        client_ip='192.168.1.61',
+        client_ip='192.168.1.21',
         directory = './run/',
         cv_mode='light',
         inf_time=1,
