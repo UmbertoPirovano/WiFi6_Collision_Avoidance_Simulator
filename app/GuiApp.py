@@ -1,10 +1,10 @@
 import io
 import os
-import sys
 import tkinter as tk
 import customtkinter
 from PIL import Image
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 from Gui.MessageWindow import MessageWindow
 from Gui.SettingsWindow import SettingsWindow
@@ -31,16 +31,20 @@ class App(customtkinter.CTk):
         # keep track of after callbacks
         self.after_callbacks = []
 
+        # General styling
+        self.radius = 10
+        self.font = customtkinter.CTkFont(size=12, weight="bold")
+
         # configure grid layout (4x4)
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure((2, 3), weight=0)
         self.grid_rowconfigure((0, 1, 2), weight=1)
 
         # SIDEBAR FRAME
-        self.sidebar_frame = customtkinter.CTkFrame(self, width=140, corner_radius=0)
+        self.sidebar_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
         self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsew")
         self.sidebar_frame.grid_rowconfigure(4, weight=1)
-        self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="5GCARS1", font=customtkinter.CTkFont(size=20, weight="bold"))
+        self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="5GCARS1", font=self.font)
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
         self.sidebar_button_1 = customtkinter.CTkButton(self.sidebar_frame, command=self.run_button_event)
         self.sidebar_button_1.grid(row=1, column=0, padx=20, pady=10)
@@ -50,35 +54,35 @@ class App(customtkinter.CTk):
         self.sidebar_button_2.configure(text="Settings")
 
         # INPUT FRAME
-        self.input_frame = customtkinter.CTkFrame(self, width=140, corner_radius=0)
+        self.input_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
         self.input_frame.grid(row=0, column=1, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=3)
         self.input_frame.grid_rowconfigure(9, weight=1)
         self.input_frame.grid_columnconfigure(2, weight=1)
 
         # CV PARAMETERS
-        self.cvlabel = customtkinter.CTkLabel(self.input_frame, text="Cv model parameters:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.cvlabel = customtkinter.CTkLabel(self.input_frame, text="Cv model parameters:", font=self.font)
         self.cvlabel.grid(row=0, column=0, columnspan=1, pady=10)
-        self.info_button_cv = customtkinter.CTkButton(self.input_frame, text="info", font=customtkinter.CTkFont(size=12, weight="bold"), command=self.open_cvInfoWindow)
+        self.info_button_cv = customtkinter.CTkButton(self.input_frame, text="info", font=self.font, command=self.open_cvInfoWindow)
         self.info_button_cv.grid(row=0, column=1, pady=10)
 
         # CV Model
-        self.option1 = customtkinter.CTkLabel(self.input_frame, text="CV model:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.option1 = customtkinter.CTkLabel(self.input_frame, text="CV model:", font=self.font)
         self.option1.grid(row=1, column=0, padx=20, pady=(10, 10))
 
         self.optionmenu_1 = customtkinter.CTkComboBox(self.input_frame, values=["Superlight", "Light", "Medium", "Heavy"], state="readonly")
         self.optionmenu_1.grid(row=1, column=1, padx=20, pady=(10, 10))
-        self.optionmenu_1.set("Superlight")
+        self.optionmenu_1.set("Light")
 
         # Image Format
-        self.option2 = customtkinter.CTkLabel(self.input_frame, text="Image Format:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.option2 = customtkinter.CTkLabel(self.input_frame, text="Image Format:", font=self.font)
         self.option2.grid(row=2, column=0, padx=20, pady=(10, 10))
 
         self.optionmenu_2 = customtkinter.CTkComboBox(self.input_frame, values=["JPEG", "PNG"], state="readonly")
         self.optionmenu_2.grid(row=2, column=1, padx=20, pady=(10, 10))
-        self.optionmenu_2.set("PNG")
+        self.optionmenu_2.set("JPEG")
 
         # GPU Selection
-        self.gpu_label = customtkinter.CTkLabel(self.input_frame, text="GPU Selection:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.gpu_label = customtkinter.CTkLabel(self.input_frame, text="GPU Selection:", font=self.font)
         self.gpu_label.grid(row=3, column=0, padx=20, pady=(20, 10))
 
         self.gpu_var = tk.StringVar(value='device')
@@ -87,7 +91,7 @@ class App(customtkinter.CTk):
         self.gpu_combobox.set("device")
 
         # Virtual GPU Entry
-        self.virtual_label = customtkinter.CTkLabel(self.input_frame, text="Inference time:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.virtual_label = customtkinter.CTkLabel(self.input_frame, text="Inference time:", font=self.font)
         self.virtual_entry = customtkinter.CTkEntry(self.input_frame)
         self.virtual_entry.bind('<Return>', self.parse_virtual_entry)
         self.virtual_entry.configure(state="disabled")
@@ -95,38 +99,39 @@ class App(customtkinter.CTk):
         self.virtual_entry.grid(row=4, column=1, padx=10, pady=10)
 
         # CHANNEL PARAMETERS
-        self.label_fr = customtkinter.CTkLabel(self.input_frame, text="Channel parameters:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.label_fr = customtkinter.CTkLabel(self.input_frame, text="Channel parameters:", font=self.font)
         self.label_fr.grid(row=5, column=0, pady=10)
-        self.info_button_channel = customtkinter.CTkButton(self.input_frame, text="info", font=customtkinter.CTkFont(size=12, weight="bold"), command=self.open_channelInfoWindow)
+        self.info_button_channel = customtkinter.CTkButton(self.input_frame, text="info", font=self.font, command=self.open_channelInfoWindow)
         self.info_button_channel.grid(row=5, column=1, pady=10)
         # Bandwidth
-        self.bandwidth = customtkinter.CTkLabel(self.input_frame, text="Bandwidth [MHz]:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.bandwidth = customtkinter.CTkLabel(self.input_frame, text="Bandwidth [MHz]:", font=self.font)
         self.bandwidth.grid(row=7, column=0, padx=10, pady=10)
         self.bandwidth_values = customtkinter.CTkComboBox(self.input_frame, values=["20", "40", "80", "160"], state="readonly")
         self.bandwidth_values.grid(row=7, column=1, padx=10, pady=10)
         self.bandwidth_values.set("20")
 
         # Central frequency
-        self.central_frequency = customtkinter.CTkLabel(self.input_frame, text="Central frequency[GHz]:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.central_frequency = customtkinter.CTkLabel(self.input_frame, text="Central frequency[GHz]:", font=self.font)
         self.central_frequency.grid(row=6, column=0, padx=10, pady=10)
         self.frequency_values = customtkinter.CTkComboBox(self.input_frame, values=["2.4", "5"], state="readonly", command=self.update_bandwidth_values)
         self.frequency_values.grid(row=6, column=1, padx=10, pady=10)
         self.frequency_values.set("5")
 
         # Transmitted power
-        self.ptx = customtkinter.CTkLabel(self.input_frame, text="Ptx [dBm]:", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.ptx = customtkinter.CTkLabel(self.input_frame, text="Ptx [dBm]:", font=self.font)
         self.ptx.grid(row=8, column=0, padx=10, pady=10)
         self.ptx_values = customtkinter.CTkComboBox(self.input_frame, values=["-15", "-20", "-25", "-30"], state="readonly")
         self.ptx_values.grid(row=8, column=1, padx=10, pady=10)
         self.ptx_values.set("-15")
 
         # LOGBOX
-        self.textbox = customtkinter.CTkTextbox(self, width=250)
+        self.textbox = customtkinter.CTkTextbox(self, width=250, font=self.font, corner_radius=self.radius)
         self.textbox.grid(row=3, column=1, padx=(20, 20), pady=(20, 20), sticky="nsew")
-        self.textbox.insert(index="0.0", text="Simulation output:")
+        self.textbox.insert(index="0.0", text="Simulation output:\n")
+        self.textbox.configure(state="disabled")
 
         # SIDE IMAGES
-        self.image_frame = customtkinter.CTkFrame(self, width=500, corner_radius=0)
+        self.image_frame = customtkinter.CTkFrame(self, width=500, corner_radius=self.radius)
         self.image_frame.grid(row=0, column=3, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=4)
         self.image_frame.grid_rowconfigure((0), weight=1)
         self.image_frame.grid_rowconfigure((1, 2), weight=2)
@@ -174,17 +179,40 @@ class App(customtkinter.CTk):
         plt.close('all')
         fig, ax = plt.subplots(figsize=(inch_width, inch_height))
 
-        # Create a lollipop plot
-        ax.stem(range(len(Total_lat)), Total_lat)
+        # Define custom colors
+        line_color = '#00bcd4'  # Cyan color for the stems
+        marker_color = '#ff4081'  # Magenta color for the markers
+        base_color = '#ffeb3b'  # Yellow color for the base lines
+        background_color = '#2b2b2b'  # Dark gray background color
+        grid_color = '#d3d3d3'  # Light gray grid color
+        text_color = '#ffffff'  # White text color
+
+        # Set the background color
+        ax.set_facecolor(background_color)
+        fig.patch.set_facecolor(background_color)
+
+        # Create a lollipop plot with custom colors
+        markerline, stemlines, baseline = ax.stem(range(len(Total_lat)), Total_lat)
+
+        # Set custom colors for the plot elements
+        plt.setp(markerline, 'markerfacecolor', marker_color, 'markeredgecolor', marker_color)
+        plt.setp(stemlines, 'color', line_color)
+        #plt.setp(baseline, 'color', base_color)
 
         # Customize the plot
-        ax.set_title('Overall service latency')
-        ax.set_xlabel('Inference')
-        ax.set_ylabel('Latency (ms)')
-        ax.set_ylim(min(Total_lat) - 50, max(Total_lat) + 50)
-        ax.grid(True)
-        # Adjust layout to prevent labels from being cut off
+        ax.set_title('Overall Service Latency', fontsize=14, fontweight='bold', color=text_color)
+        ax.set_xlabel('Inference', fontsize=12, color=text_color)
+        ax.set_ylabel('Latency (ms)', fontsize=12, color=text_color)
+        ax.set_ylim(0, max(Total_lat) + 50)
+        ax.grid(True, linestyle='--', linewidth=0.7, color=grid_color, alpha=0.7)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+        # Set the color of ticks
+        ax.tick_params(axis='both', which='both', colors=text_color)
+
+        # Customize the plot layout to prevent labels from being cut off
         plt.tight_layout()
+
         # Save the plot to a BytesIO buffer
         buf = io.BytesIO()
         fig.savefig(buf, format='png')
@@ -211,9 +239,11 @@ class App(customtkinter.CTk):
 
     def set_ip_address(self, ip):
         self.ip_address = ip
+        self.print_to_logbox(f"IP address set to: {ip}")
 
     def set_output_directory(self, directory):
         self.output_directory = directory
+        self.print_to_logbox(f"Output directory set to: {directory}")
 
     def update_gpu_info(self, event=None):
         selected_gpu = self.gpu_var.get()
@@ -230,20 +260,46 @@ class App(customtkinter.CTk):
             self.virtual_entry.delete(0, tk.END)
             self.virtual_entry.insert(0, "")
 
+    def validate_input(self):
+        self.cv_mode = self.optionmenu_1.get()
+        self.image_format = self.optionmenu_2.get()
+        self.gpu = self.gpu_var.get()
+        self.inference_time = self.virtual_entry.get() if self.gpu == "virtual" else None
+        self.channel_params = [int(self.bandwidth_values.get()) * 1e6, float(self.frequency_values.get()), int(self.ptx_values.get())]
+        self.print_to_logbox(f"Selected CV model: {self.cv_mode}")
+        self.print_to_logbox(f"Selected image format: {self.image_format}")
+        self.print_to_logbox(f"Selected GPU: {self.gpu}")
+        if self.gpu == "virtual":
+            self.print_to_logbox(f"Selected inference time: {self.inference_time}")
+        self.print_to_logbox(f"Selected channel parameters: {self.channel_params}")
+
     def run_button_event(self):
-        simulation = AirSimCarSimulation(
-            gui=self,
-            client_ip='192.168.1.21',
-            directory = './run/',
-            cv_mode='light',
-            inf_time=1,
-            channel_params=[20e6, 5, -15],
-            image_format='JPEG',
-            image_quality=80,
-            decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}
-        )
-        simulation.run_simulation(obstacle="fence")
-        simulation.run_simulation(obstacle="car")
+        self.print_to_logbox("Starting simulation...")
+        try:
+            self.validate_input()
+            simulation = AirSimCarSimulation(
+                gui=self,
+                client_ip=self.ip_address,
+                directory = self.output_directory,
+                cv_mode=self.cv_mode,
+                inf_time=int(self.inference_time) if self.inference_time is not None else None,
+                channel_params=self.channel_params,
+                image_format=self.image_format,
+                image_quality=80,
+                decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}
+            )
+            fail = simulation.run_simulation(obstacle="fence")
+            self.print_to_logbox("Scenario 1 completed:" + (" Collision detected." if fail else " No collision detected."))
+            fail = simulation.run_simulation(obstacle="car")
+            self.print_to_logbox("Scenario 2 completed." + (" Collision detected." if fail else " No collision detected."))
+            self.print_to_logbox("Simulation completed.")
+        except Exception as e:
+            self.print_to_logbox(f"Error during simulation: {e}")
+
+    def print_to_logbox(self, text):
+        self.textbox.configure(state="normal")
+        self.textbox.insert(index="end", text=f"\n{text}")
+        self.textbox.configure(state="disabled")
 
     def open_cvInfoWindow(self):
         text = "CV INFO:\n\nAggiungi descrizione"

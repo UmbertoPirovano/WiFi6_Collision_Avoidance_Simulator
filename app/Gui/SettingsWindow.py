@@ -6,14 +6,15 @@ import customtkinter
 class SettingsWindow(customtkinter.CTkToplevel):
     def __init__(self,parent,*args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.geometry("800x300")
+        self.geometry("600x300")
         self.title("Settings")
         self.resizable(False,False)
         self.parent=parent
+
         #Grid 
         self.grid_columnconfigure((0,1,2,3,4), weight=1)
         self.grid_rowconfigure((0, 1, 2,3,4), weight=1)
-        self.input_frame = customtkinter.CTkFrame(self, width=140, corner_radius=0)
+        self.input_frame = customtkinter.CTkFrame(self, width=140, corner_radius=0, bg_color="transparent")
         self.input_frame.grid(row=0, column=0, padx=(20, 20), pady=(20, 20), rowspan=3,columnspan=4)
         self.input_frame.grid_rowconfigure((0,1,2,3,4), weight=1)
         self.input_frame.grid_columnconfigure((0,1,2,3), weight=1)
@@ -60,7 +61,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
     def parse_rng_entry(self,event):
         try:
             a = float(self.rng_entry.get())
-            rng = random.seed(a)
+            random.seed(a)
         except ValueError:
             self.rng_entry.delete(0,tk.END)
             self.rng_entry.insert(0,"")
@@ -70,12 +71,10 @@ class SettingsWindow(customtkinter.CTkToplevel):
         Directory = self.directory_entry.cget("text")
         if self.validate_ip():
             self.parent.set_ip_address(client_ip)
+            self.parent.set_output_directory(Directory)    
             self.destroy()
         else:
             self.label_connection.configure(text="IP format not valid")
-            
-       
-        self.parent.set_output_directory(Directory)    
     
     def select_directory(self):
         self.directory = tk.filedialog.askdirectory()

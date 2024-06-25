@@ -22,10 +22,10 @@ class CVEdgeService:
         self.emergency_threshold = decision_params['emergency_threshold']
 
         mode_dict = {
-            'medium': 0,
-            'super_light': 1,
-            'heavy': 2,
-            'light': 3
+            'Medium': 0,
+            'Super_light': 1,
+            'Heavy': 2,
+            'Light': 3
         }
         if isinstance(mode, str):
             mode = mode_dict[mode]

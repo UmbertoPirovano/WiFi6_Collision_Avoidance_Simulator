@@ -183,7 +183,7 @@ if __name__ == "__main__":
     simulation = AirSimCarSimulation(
         client_ip='192.168.1.21',
         directory = './run/',
-        cv_mode='light',
+        cv_mode='Light',
         inf_time=1,
         channel_params=[20e6, 5, -15],
         image_format='JPEG',
