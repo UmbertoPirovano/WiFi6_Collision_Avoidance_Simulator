@@ -2,7 +2,6 @@
 *.pyc
 *.pt
 *.pth
-*.png
 *.jpg
 images/
 results*/
