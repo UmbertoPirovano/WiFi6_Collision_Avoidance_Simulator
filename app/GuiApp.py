@@ -203,7 +203,7 @@ class App(customtkinter.CTk):
         ax.set_title('Overall Service Latency', fontsize=14, fontweight='bold', color=text_color)
         ax.set_xlabel('Inference', fontsize=12, color=text_color)
         ax.set_ylabel('Latency (ms)', fontsize=12, color=text_color)
-        ax.set_ylim(0, max(Total_lat) + 50)
+        ax.set_ylim(max(Total_lat)-100, max(Total_lat) + 100)
         ax.grid(True, linestyle='--', linewidth=0.7, color=grid_color, alpha=0.7)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
