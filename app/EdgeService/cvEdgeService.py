@@ -23,7 +23,7 @@ class CVEdgeService:
 
         mode_dict = {
             'Medium': 0,
-            'Super_light': 1,
+            'Superlight': 1,
             'Heavy': 2,
             'Light': 3
         }
