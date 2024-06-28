@@ -4,7 +4,7 @@ class MessageWindow(customtkinter.CTkToplevel):
     def __init__(self, text="", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.geometry("600x500")
-        self.title("Parameters' details")
+        self.title("")
         self.resizable(False,False)
 
         self.grid_columnconfigure(0, weight=1)

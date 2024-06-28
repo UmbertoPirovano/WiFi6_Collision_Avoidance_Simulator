@@ -114,7 +114,7 @@ class App(customtkinter.CTk):
         self.bandwidth_values.set("20")
 
         # Central frequency
-        self.central_frequency = customtkinter.CTkLabel(self.input_frame, text="Central frequency[GHz]:", font=self.font)
+        self.central_frequency = customtkinter.CTkLabel(self.input_frame, text="Central frequency [GHz]:", font=self.font)
         self.central_frequency.grid(row=6, column=0, padx=10, pady=10)
         self.frequency_values = customtkinter.CTkComboBox(self.input_frame, values=["2.4", "5"], state="readonly", command=self.update_bandwidth_values)
         self.frequency_values.grid(row=6, column=1, padx=10, pady=10)
@@ -318,8 +318,8 @@ class App(customtkinter.CTk):
     def open_channelInfoWindow(self):
         cv_text = "CHANNEL INFO:\n\n"\
           "- Central frequency: wi-fi 6 can work in two main carriers 2.4 GHz or 5 GHz\n\n"\
-          "!!! If 2.4 GHz is chosen as central frequency only 20,40 MHz bandwidths will be available,\n\n because the total available bandwidth is 60 MHz\n\n"\
-          "!!! If 5 GHz is chosen as central frequency only 20,40,80,160 MHz bandwidths will be available,\n\n because the total available bandwidth is 500 MHz\n\n"\
+          "!!! If 2.4 GHz is chosen as central frequency only 20,40 MHz bandwidths will be available, because the total available bandwidth is 60 MHz\n\n"\
+          "!!! If 5 GHz is chosen as central frequency only 20,40,80,160 MHz bandwidths will be available, because the total available bandwidth is 500 MHz\n\n"\
           "- Bandwidth: spacing between the channel, higher is the value lower will be the transmission time of the image but with a trade off with the number of users possible\n\n"\
           "- Ptx: Transmitted power values assuming different types of transmitters"
 
