@@ -9,21 +9,21 @@ class Channel_802_11:
         self.available_bandwidth = decimal.Decimal(str(available_bandwidth))  # Bandwidth in Hz
         self.frequency = decimal.Decimal(str(frequency))  # Frequency in GHz
         self.P_tx = decimal.Decimal(str(P_tx))  # Transmitted power in dBm
-        self.P_n = decimal.Decimal(str(random.uniform(0, 5)))  # Noise power in dBm, randomly generated
-        self.modulation_order = decimal.Decimal('1024')  # Modulation order for 1024-QAM
+        self.P_n = decimal.Decimal(str(random.uniform(-70,-75)))  # Noise power in dBw, randomly generated
         self.n = decimal.Decimal(math.log2(1024))  # Bits per symbol for 1024-QAM
     
     def __calculate_fspl(self, distance):
         distance = decimal.Decimal(str(distance))
-        fspl = 20 * distance.log10() + 20 * self.frequency.log10() - decimal.Decimal('27.6')
-        if fspl < 0:
-            fspl = 0
+        fspl = 20 * distance.log10() + 20 * self.frequency.log10() + decimal.Decimal('32.4') 
         return fspl
 
     def __calculate_snr(self, fspl):
-        std = random.uniform(1,4)
-        X_s = decimal.Decimal(str(np.random.normal(0, std)))  # shadowing component
-        snr = self.P_tx - self.P_n - fspl - (X_s *random.randint(0,2))
+        std = random.uniform(1,3)
+        X_s = decimal.Decimal(str(abs(np.random.normal(0, std))))
+        print(X_s)  # shadowing component
+        snr = self.P_tx - self.P_n - fspl  - (X_s *random.randint(0,2))
+        if snr < 0 :
+            snr = 0
         return snr
     
     def __calculate_channel_capacity(self, snr_linear):
@@ -68,13 +68,13 @@ class Channel_802_11:
     
 if __name__ == "__main__":
     random.seed()  # Set seed for reproducibility
-    available_bandwidth = 20e6  # 80 MHz
+    available_bandwidth = 80e6  # 80 MHz
     frequency = 5  # 5 GHz
-    distance = 11  # Distance in meters
+    distance = 100 # Distance in meters
 
     file_path = "/home/bert/github/5G_CARS_1/Airsim/images/image_3.png"
     import os
-    file_size = 800000
+    file_size = 100000
     calculator = Channel_802_11(available_bandwidth, frequency, P_tx=20)
     results = calculator.perform_calculations(file_size, distance)
 
@@ -86,5 +86,5 @@ if __name__ == "__main__":
     print(f"Bitrate: {results['Bitrate_Mbps']:.2f} Mbps")
     print(f"Bandwidth usage: {results['Bandwidth_usage']:.2f}")
     print(f"Transmission time: {results['tx_time']:.6f} s")
-
+    print(f"Noise power : {results['P_n']:.6f} dB")
 
