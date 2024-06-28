@@ -42,7 +42,7 @@ class App(customtkinter.CTk):
 
         # SIDEBAR FRAME
         self.sidebar_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
-        self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsew")
+        self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsw")
         self.sidebar_frame.grid_rowconfigure(4, weight=1)
         self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="5GCARS1", font=self.font)
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
@@ -52,6 +52,9 @@ class App(customtkinter.CTk):
         self.sidebar_button_2 = customtkinter.CTkButton(self.sidebar_frame, command=self.open_settingsWindow)
         self.sidebar_button_2.grid(row=2, column=0, padx=20, pady=10)
         self.sidebar_button_2.configure(text="Settings")
+        self.sidebar_button3 = customtkinter.CTkButton(self.sidebar_frame, command=self.open_aboutWindow)
+        self.sidebar_button3.grid(row=3, column=0, padx=20, pady=510, sticky="s")
+        self.sidebar_button3.configure(text="About")
 
         # INPUT FRAME
         self.input_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
@@ -91,7 +94,7 @@ class App(customtkinter.CTk):
         self.gpu_combobox.set("device")
 
         # Virtual GPU Entry
-        self.virtual_label = customtkinter.CTkLabel(self.input_frame, text="Inference time:", font=self.font)
+        self.virtual_label = customtkinter.CTkLabel(self.input_frame, text="Inference interval [s]:", font=self.font)
         self.virtual_entry = customtkinter.CTkEntry(self.input_frame)
         self.virtual_entry.bind('<Return>', self.parse_virtual_entry)
         self.virtual_entry.configure(state="disabled")
@@ -300,6 +303,10 @@ class App(customtkinter.CTk):
         self.textbox.configure(state="normal")
         self.textbox.insert(index="end", text=f"\n{text}")
         self.textbox.configure(state="disabled")
+
+    def open_aboutWindow(self):
+        text = "Realized by:\n\n- Umberto Pirovano\n- Andrea Paternò\n- Andrea Conese\n- Hamze Ghorbani Koujani\n\nVersion: 2.0\n\n802.11ax Collision Avoidance Simulator\n\n2024\n\nPolitecnico di Torino\n\n"
+        self.open_message_window(text)
 
     def open_cvInfoWindow(self):
         text = "CV INFO:\n\nAggiungi descrizione"
