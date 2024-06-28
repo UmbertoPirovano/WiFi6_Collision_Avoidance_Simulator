@@ -9,13 +9,15 @@ class Channel_802_11:
         self.available_bandwidth = decimal.Decimal(str(available_bandwidth))  # Bandwidth in Hz
         self.frequency = decimal.Decimal(str(frequency))  # Frequency in GHz
         self.P_tx = decimal.Decimal(str(P_tx))  # Transmitted power in dBm
-        self.P_n = decimal.Decimal(str(random.uniform(-105, -120)))  # Noise power in dBm, randomly generated
+        self.P_n = decimal.Decimal(str(random.uniform(0, 5)))  # Noise power in dBm, randomly generated
         self.modulation_order = decimal.Decimal('1024')  # Modulation order for 1024-QAM
         self.n = decimal.Decimal(math.log2(1024))  # Bits per symbol for 1024-QAM
     
     def __calculate_fspl(self, distance):
         distance = decimal.Decimal(str(distance))
-        fspl = 20 * distance.log10() + 20 * self.frequency.log10() + decimal.Decimal('32.4')
+        fspl = 20 * distance.log10() + 20 * self.frequency.log10() - decimal.Decimal('27.6')
+        if fspl < 0:
+            fspl = 0
         return fspl
 
     def __calculate_snr(self, fspl):
@@ -66,18 +68,19 @@ class Channel_802_11:
     
 if __name__ == "__main__":
     random.seed()  # Set seed for reproducibility
-    available_bandwidth = 80e6  # 80 MHz
+    available_bandwidth = 20e6  # 80 MHz
     frequency = 5  # 5 GHz
-    distance = 18  # Distance in meters
+    distance = 11  # Distance in meters
 
     file_path = "/home/bert/github/5G_CARS_1/Airsim/images/image_3.png"
     import os
-    file_size = os.path.getsize(file_path)  # File size in MB
-    calculator = Channel_802_11(available_bandwidth, frequency, P_tx=-15)
+    file_size = 800000
+    calculator = Channel_802_11(available_bandwidth, frequency, P_tx=20)
     results = calculator.perform_calculations(file_size, distance)
 
-    print(f"Transmitted Power: {results['P_tx']:.2f} m/s")  # Speed is used as transmitted power
+    print(f"Transmitted Power: {results['P_tx']:.2f} dB")  # Speed is used as transmitted power
     print(f"Free Space Path Loss (FSPL): {results['FSPL']:.2f} dB")
+    print(f"SNR in Db:  {results['SNR_dB']:.2f} dB" )
     print(f"SNR (linear): {results['SNR_linear']:.2f}")
     print(f"Channel Capacity: {results['Channel_Capacity_Mbps']:.2f} Mbps")
     print(f"Bitrate: {results['Bitrate_Mbps']:.2f} Mbps")

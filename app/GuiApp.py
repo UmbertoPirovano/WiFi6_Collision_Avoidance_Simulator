@@ -123,9 +123,9 @@ class App(customtkinter.CTk):
         # Transmitted power
         self.ptx = customtkinter.CTkLabel(self.input_frame, text="Ptx [dBm]:", font=self.font)
         self.ptx.grid(row=8, column=0, padx=10, pady=10)
-        self.ptx_values = customtkinter.CTkComboBox(self.input_frame, values=["-15", "-20", "-25", "-30"], state="readonly")
+        self.ptx_values = customtkinter.CTkComboBox(self.input_frame, values=["20", "25", "30"], state="readonly")
         self.ptx_values.grid(row=8, column=1, padx=10, pady=10)
-        self.ptx_values.set("-15")
+        self.ptx_values.set("20")
 
         # LOGBOX
         self.textbox = customtkinter.CTkTextbox(self, width=250, font=self.font, corner_radius=self.radius)
