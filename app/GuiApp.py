@@ -203,7 +203,7 @@ class App(customtkinter.CTk):
         ax.set_title('Overall Service Latency', fontsize=14, fontweight='bold', color=text_color)
         ax.set_xlabel('Inference', fontsize=12, color=text_color)
         ax.set_ylabel('Latency (ms)', fontsize=12, color=text_color)
-        ax.set_ylim(max(Total_lat)-100, max(Total_lat) + 100)
+        ax.set_ylim(min(Total_lat)-100, max(Total_lat) + 100)
         ax.grid(True, linestyle='--', linewidth=0.7, color=grid_color, alpha=0.7)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
@@ -302,11 +302,20 @@ class App(customtkinter.CTk):
         self.textbox.configure(state="disabled")
 
     def open_cvInfoWindow(self):
-        text = "CV INFO:\n\nAggiungi descrizione"
+        text = "CV INFO:\n\n"\
+              "-Cv model: it is possible to choose among different proposed models that have different weights and \n\nperformances\n\n"\
+              "-Image format: JPEG is set to 80% quality, whereas PNG is the default format with 100% quality.\n\n"\
+              "-GPU selection: By specifying the desired inference time (Time to segment),\n\n you can simulate both in real time with your DEVICE or a simulated GPU using VIRTUAL"
         self.open_message_window(text)
 
     def open_channelInfoWindow(self):
-        cv_text = "CHANNEL INFO:\n\nAggiungi descrizione"
+        cv_text = "CHANNEL INFO:\n\n"\
+          "- Central frequency: wi-fi 6 can work in two main carriers 2.4 GHz or 5 GHz\n\n"\
+          "!!! If 2.4 GHz is chosen as central frequency only 20,40 MHz bandwidths will be available,\n\n because the total available bandwidth is 60 MHz\n\n"\
+          "!!! If 5 GHz is chosen as central frequency only 20,40,80,160 MHz bandwidths will be available,\n\n because the total available bandwidth is 500 MHz\n\n"\
+          "- Bandwidth: spacing between the channel, higher is the value lower will be the transmission time of the image but with a trade off with the number of users possible\n\n"\
+          "- Ptx: Transmitted power values assuming different types of transmitters"
+
         self.open_message_window(cv_text)
 
     def open_message_window(self, text):
