@@ -41,7 +41,7 @@ class AirSimCarSimulation:
         self.chronos_capture = []
         self.chronos_tx = []
         self.chronos_inference = []
-
+        self.Speed = []
     def __init_simulation(self):
         self.client.enableApiControl(True)
         try:
@@ -144,7 +144,11 @@ class AirSimCarSimulation:
                         )["tx_time"]
                         time.sleep(float(tx_time))
                         self.chronos_tx.append(time.time() - start_time)
-
+                        controls = self.client.getCarState()
+                        speed = controls.speed
+                        
+                        self.Speed.append(speed)
+                        print(self.Speed)
                         # EDGE SERVICE
                         start_time = time.time()
                         if self.inf_time is not None:
@@ -161,10 +165,10 @@ class AirSimCarSimulation:
                         
                         # ACTUATION
                         self.client.setCarControls(action)
-
+                       
                         # UPDATE GUI
                         if self.gui is not None:
-                            self.gui.update_gui(times=[self.chronos_capture, self.chronos_tx, self.chronos_inference])
+                            self.gui.update_gui(times=[self.chronos_capture, self.chronos_tx, self.chronos_inference],speed=self.Speed)
 
                         if self.client.getCarState().speed < 0.1:
                             print("Car stopped. Exiting simulation.")
@@ -181,11 +185,11 @@ if __name__ == "__main__":
     sys.tracebacklimit = 0
     random.seed(7)
     simulation = AirSimCarSimulation(
-        client_ip='192.168.1.21',
+        client_ip='192.168.1.11',
         directory = './run/',
         cv_mode='Light',
         inf_time=1,
-        channel_params=[20e6, 5, -15],
+        channel_params=[80e6, 5, 30],
         image_format='JPEG',
         image_quality=80,
         decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}
