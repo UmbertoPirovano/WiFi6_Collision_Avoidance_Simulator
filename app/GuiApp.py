@@ -16,13 +16,12 @@ customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "gre
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
-
         self.ip_address = ""
         self.output_directory = './run/'
 
         # configure window
         self.title("5GCARS1 Simulator")
-        self.geometry(f"{1244}x{750}")
+        self.geometry(f"{2500}x{1200}")
         self.resizable(False, False)
         # initialize secondary windows
         self.toplevel_window = None
@@ -133,23 +132,40 @@ class App(customtkinter.CTk):
         self.textbox.insert(index="0.0", text="Simulation output:\n")
         self.textbox.configure(state="disabled")
 
-        # SIDE IMAGES
-        self.image_frame = customtkinter.CTkFrame(self, width=500, corner_radius=self.radius)
-        self.image_frame.grid(row=0, column=3, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=4)
-        self.image_frame.grid_rowconfigure((0), weight=1)
-        self.image_frame.grid_rowconfigure((1, 2), weight=2)
+        #Tab view for images
+        self.tabview = customtkinter.CTkTabview(master=self,width=600,height=1200)
+        self.tabview.grid(row=0,column=3,padx=(20,20), pady=(20,20),rowspan=4)
 
+        self.tabview.add("tab 1")  # add tab at the end
+        self.tabview.add("tab 2")  # add tab at the end
+        self.tabview.set("tab 1")
+        # SIDE IMAGES
+        #self.image_frame = customtkinter.CTkFrame(self, width=500, corner_radius=self.radius)
+        #self.image_frame.grid(row=0, column=3, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=4)
+        #self.image_frame.grid_rowconfigure((0), weight=1)
+        #self.image_frame.grid_rowconfigure((1, 2), weight=2)
+        
+        #Tab1
         image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Gui/asset")
         self.img1 = customtkinter.CTkImage(Image.open(os.path.join(image_path, "cv_placeholder.png")), size=(533, 300))
-        self.image1 = customtkinter.CTkLabel(self.image_frame, text="", image=self.img1)
-        self.label_img = customtkinter.CTkLabel(self.image_frame, text="Last Segmented Image", font=customtkinter.CTkFont(size=20, weight="bold"))
+        self.image1 = customtkinter.CTkLabel(master=self.tabview.tab("tab 1"), text="", image=self.img1)
+        self.label_img = customtkinter.CTkLabel(master=self.tabview.tab("tab 1"), text="Last Segmented Image", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.label_img.grid(row=0, column=0, padx=20, pady=5)
         self.image1.grid(row=1, column=0, padx=20, pady=5)
         self.img2 = customtkinter.CTkImage(Image.open(os.path.join(image_path, "latency_placeholder.png")), size=(533, 300))
-        self.image2 = customtkinter.CTkLabel(self.image_frame, text="", image=self.img2)
+        self.image2 = customtkinter.CTkLabel(master=self.tabview.tab("tab 1"), text="", image=self.img2)
         self.image2.grid(row=2, column=0, padx=20, pady=5)
         tot = [12, 50, 20]
         self.set_plot(tot)
+
+        #tab2
+        self.img3 = customtkinter.CTkImage(Image.open(os.path.join(image_path, "cv_placeholder.png")), size=(533, 300))
+        self.image3 = customtkinter.CTkLabel(master=self.tabview.tab("tab 2"), text="", image=self.img3)
+        self.label_img3 = customtkinter.CTkLabel(master=self.tabview.tab("tab 2"), text="Last Segmented Image", font=customtkinter.CTkFont(size=20, weight="bold"))
+        self.label_img3.grid(row=0, column=0, padx=20, pady=5)
+        self.image3.grid(row=1, column=0, padx=20, pady=5)
+        Speed = [21,6,7]
+        self.set_plot_speed(Speed)
 
         # Close event bindings
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -168,6 +184,57 @@ class App(customtkinter.CTk):
         self.img1 = customtkinter.CTkImage(Image.open(vis_path), size=(533, 300))
         self.image1.configure(image=self.img1)
         print(f"GUI>> Image loaded: {vis_path}")
+
+    def set_plot_speed(self,speed):
+        pixel_width = 533
+        pixel_height = 370
+        inch_width = pixel_width / 100
+        inch_height = pixel_height / 100
+        fig, ax = plt.subplots(figsize=(inch_width, inch_height))
+
+        # Define custom colors
+        bar_color = '#00bcd4'  # Cyan color for the bars
+        background_color = '#2b2b2b'  # Dark gray background color
+        grid_color = '#d3d3d3'  # Light gray grid color
+        text_color = '#ffffff'  # White text color
+        ax.clear()
+        ax.set_facecolor(background_color)
+        fig.patch.set_facecolor(background_color)
+        bars = ax.bar(range(len(speed)), speed, color=bar_color)
+        ax.set_title('Overall Service Latency', fontsize=14, fontweight='bold', color=text_color)
+        ax.set_xlabel('Inference', fontsize=12, color=text_color)
+        ax.set_ylabel('Latency (ms)', fontsize=12, color=text_color)
+        ax.grid(True, linestyle='--', linewidth=0.7, color=grid_color, alpha=0.7)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.tick_params(axis='both', which='both', colors=text_color)
+        plt.tight_layout()
+        plt.draw()
+
+        # Save the plot to a BytesIO buffer
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png')
+        buf.seek(0)
+
+        # Open the image from the buffer using PIL
+        img = Image.open(buf)
+
+        # Convert PIL image to customtkinter CTkImage
+        ctk_image1 = customtkinter.CTkImage(light_image=img, size=(pixel_width, pixel_height))
+                # Save the plot to a BytesIO buffer
+        buf1 = io.BytesIO()
+        fig.savefig(buf1, format='png')
+        buf1.seek(0)
+
+        # Open the image from the buffer using PIL
+        img = Image.open(buf1)
+
+        # Convert PIL image to customtkinter CTkImage
+        ctk_image1 = customtkinter.CTkImage(light_image=img, size=(pixel_width, pixel_height))
+
+        # Update the label with the new image
+        self.image3.configure(image=ctk_image1)
+        self.image3.image = ctk_image1  # Keep a reference to avoid garbage collection
+        buf1.close
 
     def set_plot(self, Total_lat):
         # Desired pixel dimensions
@@ -234,10 +301,11 @@ class App(customtkinter.CTk):
         # Close the buffer
         buf.close()
 
-    def update_gui(self, times):
+    def update_gui(self, times,speed):
         self.set_image()
         overall_time = [sum(x)*1000 for x in zip(*times)]
         self.set_plot(overall_time)
+        self.set_plot_speed(speed)
         self.update()
 
     def set_ip_address(self, ip):
