@@ -11,7 +11,7 @@ from Gui.MessageWindow import MessageWindow
 from Gui.SettingsWindow import SettingsWindow
 from simulator import AirSimCarSimulation
 
-customtkinter.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
+customtkinter.set_appearance_mode("Light")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue")
 
 class App(customtkinter.CTk):
@@ -44,18 +44,25 @@ class App(customtkinter.CTk):
         # SIDEBAR FRAME
         self.sidebar_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
         self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsw")
-        self.sidebar_frame.grid_rowconfigure(4, weight=1)
+        self.sidebar_frame.grid_rowconfigure(6, weight=1)
         self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="5GCARS1", font=self.font)
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
-        self.sidebar_button_1 = customtkinter.CTkButton(self.sidebar_frame, command=self.run_button_event)
-        self.sidebar_button_1.grid(row=1, column=0, padx=20, pady=10)
-        self.sidebar_button_1.configure(text="RUN")
-        self.sidebar_button_2 = customtkinter.CTkButton(self.sidebar_frame, command=self.open_settingsWindow)
-        self.sidebar_button_2.grid(row=2, column=0, padx=20, pady=10)
-        self.sidebar_button_2.configure(text="Settings")
-        self.sidebar_button3 = customtkinter.CTkButton(self.sidebar_frame, command=self.open_aboutWindow)
-        self.sidebar_button3.grid(row=3, column=0, padx=20, pady=510, sticky="s")
-        self.sidebar_button3.configure(text="About")
+        self.settings_button = customtkinter.CTkButton(self.sidebar_frame, command=self.open_settingsWindow)
+        self.settings_button.grid(row=1, column=0, padx=20, pady=10)
+        self.settings_button.configure(text="Settings")
+        self.scenario_label = customtkinter.CTkLabel(self.sidebar_frame, text="Select scenario:", font=self.font)
+        self.scenario_label.grid(row=2, column=0, padx=20, pady=(10, 0))
+        self.add_scenario_button = customtkinter.CTkButton(self.sidebar_frame, text="Add scenario")
+        self.add_scenario_button.grid(row=3, column=0, padx=20, pady=10)
+        self.scenario_optionMenu = customtkinter.CTkOptionMenu(self.sidebar_frame, values=["car", "fence"])
+        self.scenario_optionMenu.grid(row=4, column=0, padx=20, pady=10)
+        self.scenario_optionMenu.set("car")
+        self.run_button = customtkinter.CTkButton(self.sidebar_frame, command=self.run_button_event)
+        self.run_button.grid(row=5, column=0, padx=20, pady=10)
+        self.run_button.configure(text="RUN")
+        self.about_button = customtkinter.CTkButton(self.sidebar_frame, command=self.open_aboutWindow)
+        self.about_button.grid(row=9, column=0, padx=20, pady=(10,20))
+        self.about_button.configure(text="About")
 
         # INPUT FRAME
         self.input_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
@@ -327,10 +334,8 @@ class App(customtkinter.CTk):
                 image_quality=80,
                 decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}
             )
-            fail = simulation.run_simulation(obstacle="fence")
+            fail = simulation.run_simulation(obstacle=self.scenario_optionMenu.get())
             self.print_to_logbox("Scenario 1 completed:" + (" Collision detected." if fail else " No collision detected."))
-            fail = simulation.run_simulation(obstacle="car")
-            self.print_to_logbox("Scenario 2 completed." + (" Collision detected." if fail else " No collision detected."))
             self.print_to_logbox("Simulation completed.")
         except Exception as e:
             self.print_to_logbox(f"Error during simulation: {e}")
@@ -376,6 +381,9 @@ class App(customtkinter.CTk):
         self.toplevel_window.wait_visibility()
         self.toplevel_window.focus()
         self.toplevel_window.grab_set()
+
+    def open_add_scenario_window(self):
+        pass
 
     def on_message_window_close(self):
         if self.message_window:

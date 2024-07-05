@@ -32,6 +32,17 @@ class AirSimCarSimulation:
         camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(0.05, 0, 0))  #PRY in radians
         self.client.simSetCameraPose(0, camera_pose)
 
+        self.scenarios = {
+            "fence": {
+                "position": (-5.3109296826648366e-21 + 50, -7.940081658295937e-21, -0.7928239107131958),
+                "orientation": (0, 0, 0)
+            },
+            "car": {
+                "position": (-5.3109296826648366e-21, -7.940081658295937e-21, -0.7928239107131958),
+                "orientation": (0, 0, 0.05)
+            }
+        }
+
         # Initialize other components
         with contextlib.redirect_stdout(io.StringIO()):
             self.edge_service = CVEdgeService(mode=cv_mode, out_dir=self.processed_dir, decision_params=self.decision_params)
@@ -99,6 +110,15 @@ class AirSimCarSimulation:
         ) / len(self.chronos_capture)
         print("Total average time: ", total_average_time)
 
+    def get_available_scenarios(self):
+        return list(self.scenarios.keys())
+    
+    def add_scenario(self, name, position, orientation):
+        self.scenarios[name] = {
+            "position": position,
+            "orientation": orientation
+        }
+
     def run_simulation(self, obstacle="car"):
         self.__init_simulation()        
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -111,14 +131,11 @@ class AirSimCarSimulation:
                     self.client.reset()
 
                     # Set initial position of the car
-                    initial_position = self.client.simGetVehiclePose("PhysXCar").position
-                    if obstacle == "fence":
-                        new_position = airsim.Vector3r(initial_position.x_val + 50, initial_position.y_val, initial_position.z_val)
-                        new_orientation = airsim.to_quaternion(0, 0, 0)
-                    elif obstacle == "car":
-                        new_position = airsim.Vector3r(initial_position.x_val, initial_position.y_val, initial_position.z_val)
-                        new_orientation = airsim.to_quaternion(0, 0, 0.05)
-                    self.client.simSetVehiclePose(airsim.Pose(new_position, new_orientation), ignore_collision=True, vehicle_name="PhysXCar")
+                    coordinates = self.scenarios[obstacle]
+                    self.client.simSetVehiclePose(airsim.Pose(
+                        airsim.Vector3r(coordinates["position"][0], coordinates["position"][1], coordinates["position"][2]),
+                        airsim.to_quaternion(coordinates["orientation"][0], coordinates["orientation"][1], coordinates["orientation"][2])
+                    ), ignore_collision=True, vehicle_name="PhysXCar")
 
                     # Get initial state of the car
                     car_state = self.client.getCarState()
