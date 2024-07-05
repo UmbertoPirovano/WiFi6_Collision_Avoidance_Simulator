@@ -41,6 +41,7 @@ class AirSimCarSimulation:
         self.chronos_capture = []
         self.chronos_tx = []
         self.chronos_inference = []
+        self.chronos_speed = []
 
     def __init_simulation(self):
         self.client.enableApiControl(True)
@@ -163,8 +164,13 @@ class AirSimCarSimulation:
                         self.client.setCarControls(action)
 
                         # UPDATE GUI
+                        self.chronos_speed.append(self.client.getCarState().speed)
                         if self.gui is not None:
-                            self.gui.update_gui(times=[self.chronos_capture, self.chronos_tx, self.chronos_inference])
+                            self.gui.update_gui(times={
+                                "capture": self.chronos_capture,
+                                "tx": self.chronos_tx,
+                                "inference": self.chronos_inference},
+                                speeds=self.chronos_speed)
 
                         if self.client.getCarState().speed < 0.1:
                             print("Car stopped. Exiting simulation.")

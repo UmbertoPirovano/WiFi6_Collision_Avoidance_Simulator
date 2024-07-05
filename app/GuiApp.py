@@ -5,6 +5,7 @@ import customtkinter
 from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+import numpy as np
 
 from Gui.MessageWindow import MessageWindow
 from Gui.SettingsWindow import SettingsWindow
@@ -22,7 +23,7 @@ class App(customtkinter.CTk):
 
         # configure window
         self.title("5GCARS1 Simulator")
-        self.geometry(f"{1244}x{750}")
+        self.geometry(f"{1244}x{780}")
         self.resizable(False, False)
         # initialize secondary windows
         self.toplevel_window = None
@@ -134,22 +135,41 @@ class App(customtkinter.CTk):
         self.textbox.configure(state="disabled")
 
         # SIDE IMAGES
-        self.image_frame = customtkinter.CTkFrame(self, width=500, corner_radius=self.radius)
-        self.image_frame.grid(row=0, column=3, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=4)
-        self.image_frame.grid_rowconfigure((0), weight=1)
-        self.image_frame.grid_rowconfigure((1, 2), weight=2)
-
+        # TABVIEW
+        self.image_tabview = customtkinter.CTkTabview(self, corner_radius=self.radius, width=533)
+        self.image_tabview.grid(row=0, column=3, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=4)
+        self.image_tabview.add("Overview")
+        self.image_tabview.tab("Overview").grid_rowconfigure(0, weight=1)
+        self.image_tabview.tab("Overview").grid_rowconfigure((1,2), weight=2)
+        self.image_tabview.add("Latency")
+        self.image_tabview.tab("Latency").grid_rowconfigure((0,1,2,3), weight=1)
+        self.latency_tab_scrollable = customtkinter.CTkScrollableFrame(self.image_tabview.tab("Latency"), width=533)
+        self.latency_tab_scrollable.grid(row=0, column=0, padx=20, pady=5, sticky="nsew", rowspan=4)
+        self.latency_tab_scrollable.grid_rowconfigure((0,1,2,3), weight=1)
+        self.latency_tab_scrollable.bind_all("<Button-4>", lambda e: self.latency_tab_scrollable._parent_canvas.yview("scroll", -1, "units"))
+        self.latency_tab_scrollable.bind_all("<Button-5>", lambda e: self.latency_tab_scrollable._parent_canvas.yview("scroll", 1, "units"))
+        # TAB OVERVIEW
         image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Gui/asset")
-        self.img1 = customtkinter.CTkImage(Image.open(os.path.join(image_path, "cv_placeholder.png")), size=(533, 300))
-        self.image1 = customtkinter.CTkLabel(self.image_frame, text="", image=self.img1)
-        self.label_img = customtkinter.CTkLabel(self.image_frame, text="Last Segmented Image", font=customtkinter.CTkFont(size=20, weight="bold"))
+        self.label_img = customtkinter.CTkLabel(self.image_tabview.tab("Overview"), text="Last Segmented Image", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.label_img.grid(row=0, column=0, padx=20, pady=5)
-        self.image1.grid(row=1, column=0, padx=20, pady=5)
-        self.img2 = customtkinter.CTkImage(Image.open(os.path.join(image_path, "latency_placeholder.png")), size=(533, 300))
-        self.image2 = customtkinter.CTkLabel(self.image_frame, text="", image=self.img2)
-        self.image2.grid(row=2, column=0, padx=20, pady=5)
-        tot = [12, 50, 20]
-        self.set_plot(tot)
+        self.segmented_image = customtkinter.CTkLabel(self.image_tabview.tab("Overview"), text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "cv_placeholder.png")), size=(533, 300)))
+        self.segmented_image.grid(row=1, column=0, padx=20, pady=5)
+        self.plot_speed = customtkinter.CTkLabel(self.image_tabview.tab("Overview"), text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "latency_placeholder.png")), size=(533, 300)))
+        self.plot_speed.grid(row=2, column=0, padx=20, pady=5)
+        self.set_plot(self.plot_speed, [0, 0, 0, 0, 0], 'Speed')
+        # TAB LATENCY
+        self.plot_capture = customtkinter.CTkLabel(self.latency_tab_scrollable, text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "latency_placeholder.png")), size=(533, 300)))
+        self.plot_capture.grid(row=0, column=0, padx=0, pady=5)
+        self.set_plot(self.plot_capture, [0, 0, 0, 0, 0], 'Capture Latency')
+        self.plot_transmission = customtkinter.CTkLabel(self.latency_tab_scrollable, text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "latency_placeholder.png")), size=(533, 300)))
+        self.plot_transmission.grid(row=1, column=0, padx=0, pady=5)
+        self.set_plot(self.plot_transmission, [0, 0, 0, 0, 0], 'Transmission Latency')
+        self.plot_inference = customtkinter.CTkLabel(self.latency_tab_scrollable, text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "latency_placeholder.png")), size=(533, 300)))
+        self.plot_inference.grid(row=2, column=0, padx=0, pady=5)
+        self.set_plot(self.plot_inference, [0, 0, 0, 0, 0], 'Inference Latency')
+        self.plot_overall = customtkinter.CTkLabel(self.latency_tab_scrollable, text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "latency_placeholder.png")), size=(533, 300)))
+        self.plot_overall.grid(row=3, column=0, padx=0, pady=5)
+        self.set_plot(self.plot_overall, [0, 0, 0, 0, 0], 'Overall Latency')
 
         # Close event bindings
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -166,10 +186,13 @@ class App(customtkinter.CTk):
         view_files = sorted(os.listdir(os.path.join(self.output_directory, 'processed/vis')))
         vis_path = os.path.join(self.output_directory, 'processed/vis', view_files[-1])
         self.img1 = customtkinter.CTkImage(Image.open(vis_path), size=(533, 300))
-        self.image1.configure(image=self.img1)
+        self.segmented_image.configure(image=self.img1)
         print(f"GUI>> Image loaded: {vis_path}")
 
-    def set_plot(self, Total_lat):
+    def set_plot(self, plot, Total_lat, label=''):
+        if label != "Speed":
+            Total_lat = np.array(Total_lat) * 1000  # Convert to milliseconds
+
         # Desired pixel dimensions
         pixel_width = 533
         pixel_height = 370
@@ -203,10 +226,11 @@ class App(customtkinter.CTk):
         #plt.setp(baseline, 'color', base_color)
 
         # Customize the plot
-        ax.set_title('Overall Service Latency', fontsize=14, fontweight='bold', color=text_color)
+        if label != '':
+            ax.set_title(label, fontsize=14, fontweight='bold', color=text_color)
         ax.set_xlabel('Inference', fontsize=12, color=text_color)
         ax.set_ylabel('Latency (ms)', fontsize=12, color=text_color)
-        ax.set_ylim(max(min(Total_lat)-100, 0), max(Total_lat) + 100)
+        ax.set_ylim(max(min(Total_lat)-100, 0), max(Total_lat) + max(Total_lat) * 0.1)
         ax.grid(True, linestyle='--', linewidth=0.7, color=grid_color, alpha=0.7)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
@@ -228,16 +252,28 @@ class App(customtkinter.CTk):
         ctk_image = customtkinter.CTkImage(light_image=img, size=(pixel_width, pixel_height))
 
         # Update the label with the new image
-        self.image2.configure(image=ctk_image)
-        self.image2.image = ctk_image  # Keep a reference to avoid garbage collection
+        plot.configure(image=ctk_image)
+        plot.image = ctk_image  # Keep a reference to avoid garbage collection
 
         # Close the buffer
         buf.close()
 
-    def update_gui(self, times):
+    def update_plots(self, times, speeds):
+        # Update the plots with the new data
+        # Update speed plot
+        self.set_plot(self.plot_speed, speeds, 'Speed')
+        # Update latency plots
+        overall_time = [sum(x) for x in zip(*times.values())]
+        times['Total_lat'] = overall_time
+        self.set_plot(self.plot_overall,times.get('Total_lat'), 'Overall Latency')
+        self.set_plot(self.plot_capture,times.get('capture'), 'Capture Latency')
+        self.set_plot(self.plot_transmission,times.get('tx'), 'Transmission Latency')
+        self.set_plot(self.plot_inference,times.get('inference'), 'Inference Latency')
+    
+    def update_gui(self, times, speeds):
+        # times is a dictionary containing the times for each step
         self.set_image()
-        overall_time = [sum(x)*1000 for x in zip(*times)]
-        self.set_plot(overall_time)
+        self.update_plots(times, speeds)
         self.update()
 
     def set_ip_address(self, ip):
