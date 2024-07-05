@@ -6,12 +6,14 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
+import airsim
 
 from Gui.MessageWindow import MessageWindow
 from Gui.SettingsWindow import SettingsWindow
+from Gui.ScenarioEditorWindow import ScenarioEditorWindow
 from simulator import AirSimCarSimulation
 
-customtkinter.set_appearance_mode("Light")  # Modes: "System" (standard), "Dark", "Light"
+customtkinter.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue")
 
 class App(customtkinter.CTk):
@@ -20,14 +22,16 @@ class App(customtkinter.CTk):
 
         self.ip_address = ""
         self.output_directory = './run/'
+        self.scenarios = {}
 
         # configure window
-        self.title("5GCARS1 Simulator")
+        self.title("802.11ax Simulator")
         self.geometry(f"{1244}x{780}")
         self.resizable(False, False)
         # initialize secondary windows
         self.toplevel_window = None
         self.message_window = None
+        self.scenario_editor_window = None
 
         # keep track of after callbacks
         self.after_callbacks = []
@@ -45,14 +49,14 @@ class App(customtkinter.CTk):
         self.sidebar_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
         self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsw")
         self.sidebar_frame.grid_rowconfigure(6, weight=1)
-        self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="5GCARS1", font=self.font)
+        self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="802.11ax\n\nCollision\navoidance\nsimulator", font=customtkinter.CTkFont(size=16, weight="bold"))
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
         self.settings_button = customtkinter.CTkButton(self.sidebar_frame, command=self.open_settingsWindow)
         self.settings_button.grid(row=1, column=0, padx=20, pady=10)
         self.settings_button.configure(text="Settings")
         self.scenario_label = customtkinter.CTkLabel(self.sidebar_frame, text="Select scenario:", font=self.font)
         self.scenario_label.grid(row=2, column=0, padx=20, pady=(10, 0))
-        self.add_scenario_button = customtkinter.CTkButton(self.sidebar_frame, text="Add scenario")
+        self.add_scenario_button = customtkinter.CTkButton(self.sidebar_frame, text="Add scenario", command=self.open_add_scenario_window)
         self.add_scenario_button.grid(row=3, column=0, padx=20, pady=10)
         self.scenario_optionMenu = customtkinter.CTkOptionMenu(self.sidebar_frame, values=["car", "fence"])
         self.scenario_optionMenu.grid(row=4, column=0, padx=20, pady=10)
@@ -283,6 +287,19 @@ class App(customtkinter.CTk):
         self.update_plots(times, speeds)
         self.update()
 
+    def add_scenario(self, name):
+        tmp_airsim = airsim.CarClient(ip=self.ip_address)
+        tmp_airsim.confirmConnection()
+        car_state = tmp_airsim.getCarState()
+        position = [car_state.kinematics_estimated.position.x_val, car_state.kinematics_estimated.position.y_val, car_state.kinematics_estimated.position.z_val]
+        orientation = [car_state.kinematics_estimated.orientation.x_val, car_state.kinematics_estimated.orientation.y_val, car_state.kinematics_estimated.orientation.z_val]
+        self.scenarios[name] = {
+            "position": position,
+            "orientation": orientation
+        }
+        self.print_to_logbox(f"Added scenario: {name} at position {position} with orientation {orientation}")
+        self.scenario_optionMenu.configure(values=["car", "fence"] + list(self.scenarios.keys()))
+
     def set_ip_address(self, ip):
         self.ip_address = ip
         self.print_to_logbox(f"IP address set to: {ip}")
@@ -334,6 +351,8 @@ class App(customtkinter.CTk):
                 image_quality=80,
                 decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}
             )
+            for scenario in self.scenarios:
+                simulation.add_scenario(name=scenario, position=self.scenarios[scenario]["position"], orientation=self.scenarios[scenario]["orientation"])
             fail = simulation.run_simulation(obstacle=self.scenario_optionMenu.get())
             self.print_to_logbox("Scenario 1 completed:" + (" Collision detected." if fail else " No collision detected."))
             self.print_to_logbox("Simulation completed.")
@@ -383,7 +402,12 @@ class App(customtkinter.CTk):
         self.toplevel_window.grab_set()
 
     def open_add_scenario_window(self):
-        pass
+        if self.scenario_editor_window is None or not self.scenario_editor_window.winfo_exists():
+            self.scenario_editor_window = ScenarioEditorWindow(self)  # create window if its None or destroyed
+            self.scenario_editor_window.protocol("WM_DELETE_WINDOW", self.on_scenario_editor_window_close)
+        self.scenario_editor_window.wait_visibility()
+        self.scenario_editor_window.focus()
+        self.scenario_editor_window.grab_set()
 
     def on_message_window_close(self):
         if self.message_window:
@@ -396,6 +420,12 @@ class App(customtkinter.CTk):
             self.toplevel_window.grab_release()
             self.toplevel_window.destroy()
             self.toplevel_window = None
+
+    def on_scenario_editor_window_close(self):
+        if self.scenario_editor_window:
+            self.scenario_editor_window.grab_release()
+            self.scenario_editor_window.destroy()
+            self.scenario_editor_window = None
 
     def on_closing(self):
         # Cancel all scheduled callbacks
