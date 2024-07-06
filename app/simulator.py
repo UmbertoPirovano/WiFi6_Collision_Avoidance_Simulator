@@ -34,12 +34,12 @@ class AirSimCarSimulation:
 
         self.scenarios = {
             "fence": {
-                "position": (-5.3109296826648366e-21 + 50, -7.940081658295937e-21, -0.7928239107131958),
-                "orientation": (0, 0, 0)
+                "position": (0 + 50, 0, -0.79),
+                "orientation": (1, 0, 0, 0)
             },
             "car": {
-                "position": (-5.3109296826648366e-21, -7.940081658295937e-21, -0.7928239107131958),
-                "orientation": (0, 0, 0.05)
+                "position": (0, 0, -0.79),
+                "orientation": (1, 0, 0, 0.028)
             }
         }
 
@@ -131,11 +131,19 @@ class AirSimCarSimulation:
                     self.client.reset()
 
                     # Set initial position of the car
+                    print(f"Setting initial position for scenario: {obstacle}")
                     coordinates = self.scenarios[obstacle]
-                    self.client.simSetVehiclePose(airsim.Pose(
-                        airsim.Vector3r(coordinates["position"][0], coordinates["position"][1], coordinates["position"][2]),
-                        airsim.to_quaternion(coordinates["orientation"][0], coordinates["orientation"][1], coordinates["orientation"][2])
-                    ), ignore_collision=True, vehicle_name="PhysXCar")
+                    position = coordinates["position"]
+                    orientation = coordinates["orientation"]
+
+                    self.client.simSetVehiclePose(
+                        airsim.Pose(
+                            airsim.Vector3r(position[0], position[1], position[2]),
+                            airsim.Quaternionr(orientation[1], orientation[2], orientation[3], orientation[0])  # Order: x, y, z, w
+                        ),
+                        ignore_collision=True,
+                        vehicle_name="PhysXCar"
+                    )
 
                     # Get initial state of the car
                     car_state = self.client.getCarState()

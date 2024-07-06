@@ -291,14 +291,24 @@ class App(customtkinter.CTk):
         tmp_airsim = airsim.CarClient(ip=self.ip_address)
         tmp_airsim.confirmConnection()
         car_state = tmp_airsim.getCarState()
-        position = [car_state.kinematics_estimated.position.x_val, car_state.kinematics_estimated.position.y_val, car_state.kinematics_estimated.position.z_val]
-        orientation = [car_state.kinematics_estimated.orientation.x_val, car_state.kinematics_estimated.orientation.y_val, car_state.kinematics_estimated.orientation.z_val]
+        position = [
+            car_state.kinematics_estimated.position.x_val,
+            car_state.kinematics_estimated.position.y_val,
+            car_state.kinematics_estimated.position.z_val
+        ]
+        orientation = [
+            car_state.kinematics_estimated.orientation.w_val,
+            car_state.kinematics_estimated.orientation.x_val,
+            car_state.kinematics_estimated.orientation.y_val,
+            car_state.kinematics_estimated.orientation.z_val
+        ]
         self.scenarios[name] = {
             "position": position,
             "orientation": orientation
         }
         self.print_to_logbox(f"Added scenario: {name} at position {position} with orientation {orientation}")
         self.scenario_optionMenu.configure(values=["car", "fence"] + list(self.scenarios.keys()))
+
 
     def set_ip_address(self, ip):
         self.ip_address = ip
