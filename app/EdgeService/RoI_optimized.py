@@ -90,22 +90,31 @@ class RoI:
             pixels_in_roi.append(pixels)
         return pixels_in_roi
     
-    def draw_roi(self, display=True):
+    def draw_roi(self, img_path=None, display=True):
+        if img_path is not None:
+            self.img = cv2.imread(img_path)
+            if self.img is None:
+                raise ValueError("Error: Image not loaded from the provided path.")
+
         if self.img is None:
             raise ValueError("Error: Demo image not loaded.")
-        
+
         img = self.img.copy()
         for line in self.lines:
             cv2.line(img, (line[0], line[1]), (line[2], line[3]), (0, 255, 0), 2)
-        
+
         img[self.mask_inv == 255] //= 2
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         if display:
-            plt.imshow(img)
+            plt.imshow(img_rgb)
             plt.title('Result')
             plt.axis('off')
             plt.show()
+        
+        if img_path is not None:
+            cv2.imwrite(img_path, img)
+
         return img
     
     def detect_in_roi(self, mask_path, img_path=None, steering=0):
@@ -134,6 +143,8 @@ class RoI:
                 counter[key] = value / area * 100
                 value = counter[key]
                 print(f'    {blacklist[key]}: {value}')
+
+        self.draw_roi(img_path, display=False)
 
         return general_count
     

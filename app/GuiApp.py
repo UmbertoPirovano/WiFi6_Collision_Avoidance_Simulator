@@ -247,8 +247,11 @@ class App(customtkinter.CTk):
         if label != '':
             ax.set_title(label, fontsize=14, fontweight='bold', color=text_color)
         ax.set_xlabel('Inference', fontsize=12, color=text_color)
-        ax.set_ylabel('Latency (ms)', fontsize=12, color=text_color)
-        ax.set_ylim(max(min(Total_lat)-100, 0), max(Total_lat) + max(Total_lat) * 0.1)
+        if label != "Speed":
+            ax.set_ylabel('Latency (ms)', fontsize=12, color=text_color)
+        else:
+            ax.set_ylabel('Speed (m/s)', fontsize=12, color=text_color)
+        ax.set_ylim(max(min(Total_lat)-100, 0), max(max(Total_lat) + max(Total_lat) * 0.1, 5))
         ax.grid(True, linestyle='--', linewidth=0.7, color=grid_color, alpha=0.7)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 

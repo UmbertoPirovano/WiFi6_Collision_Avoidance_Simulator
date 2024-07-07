@@ -206,6 +206,7 @@ class AirSimCarSimulation:
                 finally:
                     collision = self.client.simGetCollisionInfo(vehicle_name='PhysXCar').has_collided
                     print(f"COLLISION: {collision}")
+                    time.sleep(3)
                     self.__cleanup()
                     return collision
 
