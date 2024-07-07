@@ -13,13 +13,14 @@ from EdgeService.RoI_optimized import RoI
 
 
 class CVEdgeService:
-    def __init__(self, config=None, checkpoint=None, mode=0, out_dir='results', roi_ratio=[5,20,40,40], decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}):
+    def __init__(self, config=None, checkpoint=None, mode=0, out_dir='results', roi_ratio=[5,20,40,40], decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}, target_throttle=0.5):
         
         self.out_dir = out_dir        
         self.roi = RoI(img_size=(576,1024), ratios=roi_ratio)
         self.slowdown_coeff = decision_params['slowdown_coeff']
         self.normal_threshold = decision_params['normal_threshold']
         self.emergency_threshold = decision_params['emergency_threshold']
+        self.target_throttle = target_throttle
 
         mode_dict = {
             'Medium': 0,
@@ -93,8 +94,8 @@ class CVEdgeService:
         print(f"EDGE: Computing decision")
         # detected: list of dictionaries
         # detected[i]: dictionary of detected objects in subarea i. Each value represents the percentage of area covered by the object
-        target_throttle = 0.5        
-        slowdown_coeff = [coeff * target_throttle for coeff in self.slowdown_coeff]
+        self.target_throttle        
+        slowdown_coeff = [coeff * self.target_throttle for coeff in self.slowdown_coeff]
         slowdown_factors = np.zeros(len(slowdown_coeff))
 
         action = airsim.CarControls()
@@ -115,7 +116,7 @@ class CVEdgeService:
                 elif 2 in counter.keys():
                     slowdown_factors[i] *= 0.5        
 
-        new_throttle = target_throttle - sum(slowdown_factors)
+        new_throttle = self.target_throttle - sum(slowdown_factors)
         if new_throttle < 0: new_throttle = 0
         action.throttle = new_throttle
         print(f"Throttle set to: {action.throttle}")

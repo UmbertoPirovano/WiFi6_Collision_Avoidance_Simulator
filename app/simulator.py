@@ -15,7 +15,7 @@ from EdgeService.cvEdgeService import CVEdgeService
 from Wireless_simulation.Wi_fi6 import Channel_802_11
 
 class AirSimCarSimulation:
-    def __init__(self, gui=None, directory = "./run/", client_ip = "", cv_mode=3, inf_time=None, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80, decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}):
+    def __init__(self, gui=None, directory = "./run/", client_ip = "", cv_mode=3, inf_time=None, channel_params=[20e6, 5, -15], image_format='JPEG', image_quality=80, decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}, target_throttle=0.5):
         self.gui = gui
         self.client = airsim.CarClient(ip=client_ip)
         self.client.confirmConnection()
@@ -28,6 +28,7 @@ class AirSimCarSimulation:
         self.image_quality = image_quality
         self.decision_params = decision_params
         self.inf_time = inf_time
+        self.target_throttle = target_throttle
 
         camera_pose = airsim.Pose(airsim.Vector3r(0, 0, 0), airsim.to_quaternion(0.05, 0, 0))  #PRY in radians
         self.client.simSetCameraPose(0, camera_pose)
@@ -45,7 +46,7 @@ class AirSimCarSimulation:
 
         # Initialize other components
         with contextlib.redirect_stdout(io.StringIO()):
-            self.edge_service = CVEdgeService(mode=cv_mode, out_dir=self.processed_dir, decision_params=self.decision_params)
+            self.edge_service = CVEdgeService(mode=cv_mode, out_dir=self.processed_dir, decision_params=self.decision_params, target_throttle=self.target_throttle)
         self.channel_calculator = Channel_802_11(available_bandwidth=channel_params[0], frequency=channel_params[1], P_tx=channel_params[2])
 
         # Timing records

@@ -10,7 +10,7 @@ class MessageWindow(customtkinter.CTkToplevel):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.textbox = customtkinter.CTkTextbox(self, state="normal", font=customtkinter.CTkFont(size=12, weight="bold"))
+        self.textbox = customtkinter.CTkTextbox(self, state="normal", font=customtkinter.CTkFont(size=14, weight="bold"))
         self.textbox.insert("0.0", text)
         self.textbox.configure(state="disabled")  # Disable after inserting text
         self.textbox.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)

@@ -20,12 +20,13 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
+
         self.ip_address = ""
         self.output_directory = './run/'
         self.scenarios = {}
 
         # configure window
-        self.title("802.11ax Simulator")
+        self.title("Wifi-6 Simulator")
         self.geometry(f"{1244}x{780}")
         self.resizable(False, False)
         # initialize secondary windows
@@ -39,6 +40,7 @@ class App(customtkinter.CTk):
         # General styling
         self.radius = 10
         self.font = customtkinter.CTkFont(size=12, weight="bold")
+        image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Gui/asset")
 
         # configure grid layout (4x4)
         self.grid_columnconfigure(1, weight=1)
@@ -48,9 +50,10 @@ class App(customtkinter.CTk):
         # SIDEBAR FRAME
         self.sidebar_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
         self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsw")
-        self.sidebar_frame.grid_rowconfigure(6, weight=1)
-        self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="802.11ax\n\nCollision\navoidance\nsimulator", font=customtkinter.CTkFont(size=16, weight="bold"))
-        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+        self.sidebar_frame.grid_rowconfigure(8, weight=1)
+        #self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="802.11ax\n\nCollision\navoidance\nsimulator", font=customtkinter.CTkFont(size=16, weight="bold"))
+        self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "icon.png")), size=(130, 130)))
+        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 30))
         self.settings_button = customtkinter.CTkButton(self.sidebar_frame, command=self.open_settingsWindow)
         self.settings_button.grid(row=1, column=0, padx=20, pady=10)
         self.settings_button.configure(text="Settings")
@@ -61,24 +64,29 @@ class App(customtkinter.CTk):
         self.scenario_optionMenu = customtkinter.CTkOptionMenu(self.sidebar_frame, values=["car", "fence"])
         self.scenario_optionMenu.grid(row=4, column=0, padx=20, pady=10)
         self.scenario_optionMenu.set("car")
-        self.run_button = customtkinter.CTkButton(self.sidebar_frame, command=self.run_button_event)
-        self.run_button.grid(row=5, column=0, padx=20, pady=10)
+        self.throttle_label = customtkinter.CTkLabel(self.sidebar_frame, text="Throttle:", font=self.font)
+        self.throttle_label.grid(row=5, column=0, padx=20, pady=(10, 0))
+        self.throttle_entry = customtkinter.CTkEntry(self.sidebar_frame)
+        self.throttle_entry.grid(row=6, column=0, padx=20, pady=10)
+        self.throttle_entry.insert(0, "0.5")
+        self.run_button = customtkinter.CTkButton(self.sidebar_frame, command=self.run_button_event, fg_color="green", hover_color="darkgreen")
+        self.run_button.grid(row=7, column=0, padx=20, pady=10)
         self.run_button.configure(text="RUN")
         self.about_button = customtkinter.CTkButton(self.sidebar_frame, command=self.open_aboutWindow)
         self.about_button.grid(row=9, column=0, padx=20, pady=(10,20))
         self.about_button.configure(text="About")
 
         # INPUT FRAME
-        self.input_frame = customtkinter.CTkFrame(self, width=140, corner_radius=self.radius)
-        self.input_frame.grid(row=0, column=1, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=3)
+        self.input_frame = customtkinter.CTkFrame(self, corner_radius=self.radius)
+        self.input_frame.grid(row=0, column=1, padx=(20, 0), pady=(20, 10), sticky="nsew", rowspan=3)
         self.input_frame.grid_rowconfigure(9, weight=1)
         self.input_frame.grid_columnconfigure(2, weight=1)
 
         # CV PARAMETERS
         self.cvlabel = customtkinter.CTkLabel(self.input_frame, text="Cv model parameters:", font=self.font)
-        self.cvlabel.grid(row=0, column=0, columnspan=1, pady=10)
+        self.cvlabel.grid(row=0, column=0, columnspan=1, pady=(20,10))
         self.info_button_cv = customtkinter.CTkButton(self.input_frame, text="info", font=self.font, command=self.open_cvInfoWindow)
-        self.info_button_cv.grid(row=0, column=1, pady=10)
+        self.info_button_cv.grid(row=0, column=1, pady=(20,10))
 
         # CV Model
         self.option1 = customtkinter.CTkLabel(self.input_frame, text="CV model:", font=self.font)
@@ -98,7 +106,7 @@ class App(customtkinter.CTk):
 
         # GPU Selection
         self.gpu_label = customtkinter.CTkLabel(self.input_frame, text="GPU Selection:", font=self.font)
-        self.gpu_label.grid(row=3, column=0, padx=20, pady=(20, 10))
+        self.gpu_label.grid(row=3, column=0, padx=20, pady=(10, 10))
 
         self.gpu_var = tk.StringVar(value='device')
         self.gpu_combobox = customtkinter.CTkComboBox(self.input_frame, values=["device", "virtual"], state="readonly", variable=self.gpu_var, command=self.update_gpu_info)
@@ -107,48 +115,48 @@ class App(customtkinter.CTk):
 
         # Virtual GPU Entry
         self.virtual_label = customtkinter.CTkLabel(self.input_frame, text="Inference interval [s]:", font=self.font)
+        self.virtual_label.grid(row=4, column=0, padx=20, pady=(10, 10))
         self.virtual_entry = customtkinter.CTkEntry(self.input_frame)
-        self.virtual_entry.bind('<Return>', self.parse_virtual_entry)
+        self.virtual_entry.bind('<Return>', self.parse_float_entry)
         self.virtual_entry.configure(state="disabled")
-        self.virtual_label.grid(row=4, column=0, padx=10, pady=10)
-        self.virtual_entry.grid(row=4, column=1, padx=10, pady=10)
+        self.virtual_entry.grid(row=4, column=1, padx=20, pady=(10, 10))
 
         # CHANNEL PARAMETERS
         self.label_fr = customtkinter.CTkLabel(self.input_frame, text="Channel parameters:", font=self.font)
-        self.label_fr.grid(row=5, column=0, pady=10)
+        self.label_fr.grid(row=5, column=0, padx=20, pady=(10, 10))
         self.info_button_channel = customtkinter.CTkButton(self.input_frame, text="info", font=self.font, command=self.open_channelInfoWindow)
-        self.info_button_channel.grid(row=5, column=1, pady=10)
+        self.info_button_channel.grid(row=5, column=1, padx=20, pady=(10, 10))
         # Bandwidth
         self.bandwidth = customtkinter.CTkLabel(self.input_frame, text="Bandwidth [MHz]:", font=self.font)
-        self.bandwidth.grid(row=7, column=0, padx=10, pady=10)
+        self.bandwidth.grid(row=7, column=0, padx=20, pady=(10, 10))
         self.bandwidth_values = customtkinter.CTkComboBox(self.input_frame, values=["20", "40", "80", "160"], state="readonly")
-        self.bandwidth_values.grid(row=7, column=1, padx=10, pady=10)
+        self.bandwidth_values.grid(row=7, column=1, padx=20, pady=(10, 10))
         self.bandwidth_values.set("20")
 
         # Central frequency
         self.central_frequency = customtkinter.CTkLabel(self.input_frame, text="Central frequency [GHz]:", font=self.font)
-        self.central_frequency.grid(row=6, column=0, padx=10, pady=10)
+        self.central_frequency.grid(row=6, column=0, padx=20, pady=(10, 10))
         self.frequency_values = customtkinter.CTkComboBox(self.input_frame, values=["2.4", "5"], state="readonly", command=self.update_bandwidth_values)
-        self.frequency_values.grid(row=6, column=1, padx=10, pady=10)
+        self.frequency_values.grid(row=6, column=1, padx=20, pady=(10, 10))
         self.frequency_values.set("5")
 
         # Transmitted power
         self.ptx = customtkinter.CTkLabel(self.input_frame, text="Ptx [dBm]:", font=self.font)
-        self.ptx.grid(row=8, column=0, padx=10, pady=10)
+        self.ptx.grid(row=8, column=0, padx=20, pady=(10, 10))
         self.ptx_values = customtkinter.CTkComboBox(self.input_frame, values=["20", "25", "30"], state="readonly")
-        self.ptx_values.grid(row=8, column=1, padx=10, pady=10)
+        self.ptx_values.grid(row=8, column=1, padx=20, pady=(10, 10))
         self.ptx_values.set("20")
 
         # LOGBOX
-        self.textbox = customtkinter.CTkTextbox(self, width=250, font=self.font, corner_radius=self.radius)
-        self.textbox.grid(row=3, column=1, padx=(20, 20), pady=(20, 20), sticky="nsew")
-        self.textbox.insert(index="0.0", text="Simulation output:\n")
+        self.textbox = customtkinter.CTkTextbox(self, width=200, height=250, font=self.font, corner_radius=self.radius)
+        self.textbox.grid(row=3, column=1, padx=(20, 0), pady=(0, 20), sticky="nsew")
+        self.textbox.insert(index="0.0", text="Welcome! If needed, remember to set AirSim's IP in Settings!\n\nSimulation output:\n")
         self.textbox.configure(state="disabled")
 
         # SIDE IMAGES
         # TABVIEW
         self.image_tabview = customtkinter.CTkTabview(self, corner_radius=self.radius, width=533)
-        self.image_tabview.grid(row=0, column=3, padx=(20, 20), pady=(20, 20), sticky="nsew", rowspan=4)
+        self.image_tabview.grid(row=0, column=3, padx=(20, 20), pady=(10, 20), sticky="nsew", rowspan=4)
         self.image_tabview.add("Overview")
         self.image_tabview.tab("Overview").grid_rowconfigure(0, weight=1)
         self.image_tabview.tab("Overview").grid_rowconfigure((1,2), weight=2)
@@ -160,7 +168,6 @@ class App(customtkinter.CTk):
         self.latency_tab_scrollable.bind_all("<Button-4>", lambda e: self.latency_tab_scrollable._parent_canvas.yview("scroll", -1, "units"))
         self.latency_tab_scrollable.bind_all("<Button-5>", lambda e: self.latency_tab_scrollable._parent_canvas.yview("scroll", 1, "units"))
         # TAB OVERVIEW
-        image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Gui/asset")
         self.label_img = customtkinter.CTkLabel(self.image_tabview.tab("Overview"), text="Last Segmented Image", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.label_img.grid(row=0, column=0, padx=20, pady=5)
         self.segmented_image = customtkinter.CTkLabel(self.image_tabview.tab("Overview"), text="", image=customtkinter.CTkImage(Image.open(os.path.join(image_path, "cv_placeholder.png")), size=(533, 300)))
@@ -326,7 +333,7 @@ class App(customtkinter.CTk):
         else:
             self.virtual_entry.configure(state="normal")
 
-    def parse_virtual_entry(self, event=None):
+    def parse_float_entry(self, event=None):
         try:
             float(self.virtual_entry.get())
         except ValueError:
@@ -339,6 +346,7 @@ class App(customtkinter.CTk):
         self.gpu = self.gpu_var.get()
         self.inference_time = self.virtual_entry.get() if self.gpu == "virtual" else None
         self.channel_params = [int(self.bandwidth_values.get()) * 1e6, float(self.frequency_values.get()), int(self.ptx_values.get())]
+        self.target_throttle = float(self.throttle_entry.get())
         self.print_to_logbox(f"Selected CV model: {self.cv_mode}")
         self.print_to_logbox(f"Selected image format: {self.image_format}")
         self.print_to_logbox(f"Selected GPU: {self.gpu}")
@@ -359,15 +367,16 @@ class App(customtkinter.CTk):
                 channel_params=self.channel_params,
                 image_format=self.image_format,
                 image_quality=80,
-                decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]}
+                decision_params={'slowdown_coeff': [1,1,0.55,0.17], 'normal_threshold': 5, 'emergency_threshold': [5,5,80]},
+                target_throttle=self.target_throttle
             )
             for scenario in self.scenarios:
                 simulation.add_scenario(name=scenario, position=self.scenarios[scenario]["position"], orientation=self.scenarios[scenario]["orientation"])
             fail = simulation.run_simulation(obstacle=self.scenario_optionMenu.get())
             self.print_to_logbox("Scenario 1 completed:" + (" Collision detected." if fail else " No collision detected."))
-            self.print_to_logbox("Simulation completed.")
+            self.print_to_logbox("Simulation completed.\n")
         except Exception as e:
-            self.print_to_logbox(f"Error during simulation: {e}")
+            self.print_to_logbox(f"Error during simulation: {e}\n")
 
     def print_to_logbox(self, text):
         self.textbox.configure(state="normal")
@@ -375,23 +384,23 @@ class App(customtkinter.CTk):
         self.textbox.configure(state="disabled")
 
     def open_aboutWindow(self):
-        text = "Realized by:\n\n- Umberto Pirovano\n- Andrea Paternò\n- Andrea Conese\n- Hamze Ghorbani Koujani\n\nVersion: 2.0\n\n802.11ax Collision Avoidance Simulator\n\n2024\n\nPolitecnico di Torino\n\n"
+        text = "Wifi-6 Collision Avoidance Simulator\n\nVersion: 2.0 - July 2024\n\nAuthors:\n\n- Umberto Pirovano\n- Andrea Paternò\n- Andrea Conese\n- Hamze Ghorbani Koujani\n\n"
         self.open_message_window(text)
 
     def open_cvInfoWindow(self):
         text = "CV INFO:\n\n"\
-              "-Cv model: it is possible to choose among different proposed models that have different weights and \n\nperformances\n\n"\
-              "-Image format: JPEG is set to 80% quality, whereas PNG is the default format with 100% quality.\n\n"\
-              "-GPU selection: By specifying the desired inference time (Time to segment),\n\n you can simulate both in real time with your DEVICE or a simulated GPU using VIRTUAL"
+              "-Cv model: \nit is possible to choose among different proposed models that have different performances\n\n"\
+              "-Image format: \nthe format used to retrieve images from AirSim. It is possible to choose between JPEG (80% quality) or PNG (100% quality)\n\n"\
+              "-GPU selection: \nDEVICE performs inference real-time and performances may vary depending on the hardware. \nVIRTUAL performs inference pausing the simulation every n seconds, where n is the value set in the 'Inference interval' entry\n\n"
         self.open_message_window(text)
 
     def open_channelInfoWindow(self):
         cv_text = "CHANNEL INFO:\n\n"\
-          "- Central frequency: wi-fi 6 can work in two main carriers 2.4 GHz or 5 GHz\n\n"\
-          "!!! If 2.4 GHz is chosen as central frequency only 20,40 MHz bandwidths will be available, because the total available bandwidth is 60 MHz\n\n"\
+          "- Central frequency: \nwi-fi 6 can work in two main carriers: 2.4 GHz or 5 GHz\n"\
+          "!!! If 2.4 GHz is chosen as central frequency only 20,40 MHz bandwidths will be available, because the total available bandwidth is 60 MHz\n"\
           "!!! If 5 GHz is chosen as central frequency only 20,40,80,160 MHz bandwidths will be available, because the total available bandwidth is 500 MHz\n\n"\
-          "- Bandwidth: spacing between the channel, higher is the value lower will be the transmission time of the image but with a trade off with the number of users possible\n\n"\
-          "- Ptx: Transmitted power values assuming different types of transmitters"
+          "- Bandwidth: \nspacing between the channel, higher is the value lower will be the transmission time of the image but with a trade off with the number of users possible\n\n"\
+          "- Ptx: \nTransmitted power values assuming different types of transmitters"
 
         self.open_message_window(cv_text)
 
