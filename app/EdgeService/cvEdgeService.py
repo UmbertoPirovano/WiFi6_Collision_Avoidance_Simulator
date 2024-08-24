@@ -86,7 +86,7 @@ class CVEdgeService:
         print(f"Mask path: {mask_path}")
 
         # EDGE SERVICE
-        detected = self.roi.detect_in_roi(mask_path, vis_path, steering=0)
+        detected = self.roi.detect_in_roi(mask_path, vis_path, steering=steering)
         return detected
 
 
