@@ -45,4 +45,5 @@ RUN pip install customtkinter
 ENV NVIDIA_VISIBLE_DEVICES=all
 
 # Set the entry point or command
-CMD ["python", "/5GCAR1/app/main.py"]
+WORKDIR /5GCAR1/
+CMD ["python", "./app/GuiApp.py"]
